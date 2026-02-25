@@ -23,7 +23,7 @@ public class AuthUtil {
             return getUsernameFromJwtInRequest();
         }
 
-        return null;
+        return userId;
     }
 
     private UUID getPrincipalFromSecurityContext() {

@@ -1,12 +1,13 @@
 package com.swpts.enpracticebe.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.*;
 import com.swpts.enpracticebe.entity.ReviewSession;
 import com.swpts.enpracticebe.entity.VocabularyRecord;
-import com.swpts.enpracticebe.repository.VocabularyRecordRepository;
 import com.swpts.enpracticebe.repository.ReviewSessionRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swpts.enpracticebe.repository.VocabularyRecordRepository;
+import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +24,15 @@ public class RecordService {
     private final VocabularyRecordRepository recordRepository;
     private final ReviewSessionRepository reviewSessionRepository;
     private final ObjectMapper objectMapper;
+    private final AuthUtil authUtil;
 
-    public List<VocabularyRecord> getAllRecords(UUID userId) {
+    public List<VocabularyRecord> getAllRecords() {
+        UUID userId = authUtil.getUserId();
         return recordRepository.findByUserIdOrderByTestedAtDesc(userId);
     }
 
-    public VocabularyRecord createRecord(UUID userId, RecordRequest request) {
+    public VocabularyRecord createRecord(RecordRequest request) {
+        UUID userId = authUtil.getUserId();
         VocabularyRecord record = VocabularyRecord.builder()
                 .userId(userId)
                 .englishWord(request.getEnglishWord())
@@ -36,13 +40,14 @@ public class RecordService {
                 .correctMeaning(request.getCorrectMeaning())
                 .alternatives(request.getAlternatives())
                 .synonyms(request.getSynonyms())
-                .isCorrect(request.isCorrect())
+                .isCorrect(request.getIsCorrect())
                 .build();
         return recordRepository.save(record);
     }
 
     @Transactional
-    public void deleteRecord(UUID userId, UUID recordId) {
+    public void deleteRecord(UUID recordId) {
+        UUID userId = authUtil.getUserId();
         VocabularyRecord record = recordRepository.findById(recordId)
                 .orElseThrow(() -> new NoSuchElementException("Record not found"));
         if (!record.getUserId().equals(userId)) {
@@ -52,12 +57,14 @@ public class RecordService {
     }
 
     @Transactional
-    public void deleteAllRecords(UUID userId) {
+    public void deleteAllRecords() {
+        UUID userId = authUtil.getUserId();
         recordRepository.deleteAllByUserId(userId);
     }
 
     @Transactional
-    public ImportResponse importData(UUID userId, ImportRequest request) {
+    public ImportResponse importData(ImportRequest request) {
+        UUID userId = authUtil.getUserId();
         int importedRecords = 0;
         int importedSessions = 0;
 
@@ -70,7 +77,7 @@ public class RecordService {
                     .correctMeaning(dto.getCorrectMeaning())
                     .alternatives(dto.getAlternatives() != null ? dto.getAlternatives() : new ArrayList<>())
                     .synonyms(dto.getSynonyms() != null ? dto.getSynonyms() : new ArrayList<>())
-                    .isCorrect(dto.isCorrect())
+                    .isCorrect(dto.getIsCorrect())
                     .testedAt(parseTimestamp(dto.getTimestamp()))
                     .build();
             recordRepository.save(record);
@@ -99,7 +106,8 @@ public class RecordService {
                 .build();
     }
 
-    public StatsResponse getStats(UUID userId, String period) {
+    public StatsResponse getStats(String period) {
+        UUID userId = authUtil.getUserId();
         Instant since = getStartOfPeriod(period);
 
         long total = recordRepository.countByUserIdAndTestedAtAfter(userId, since);
@@ -128,7 +136,8 @@ public class RecordService {
                 .build();
     }
 
-    public List<ChartEntry> getChartData(UUID userId, String period) {
+    public List<ChartEntry> getChartData(String period) {
+        UUID userId = authUtil.getUserId();
         ZoneId zone = ZoneId.of("UTC");
         ZonedDateTime now = ZonedDateTime.now(zone);
         List<VocabularyRecord> records;
@@ -210,7 +219,8 @@ public class RecordService {
         return entries;
     }
 
-    public int getStreak(UUID userId) {
+    public int getStreak() {
+        UUID userId = authUtil.getUserId();
         List<java.sql.Date> dates = recordRepository.findDistinctRecordDates(userId);
         if (dates.isEmpty())
             return 0;
@@ -232,7 +242,8 @@ public class RecordService {
         return streak;
     }
 
-    public List<ReviewWordDto> getReviewWords(UUID userId, String filter, int limit) {
+    public List<ReviewWordDto> getReviewWords(String filter, int limit) {
+        UUID userId = authUtil.getUserId();
         List<Object[]> rawWords;
 
         switch (filter) {
@@ -262,7 +273,8 @@ public class RecordService {
         return words;
     }
 
-    public ReviewCountsDto getReviewCounts(UUID userId) {
+    public ReviewCountsDto getReviewCounts() {
+        UUID userId = authUtil.getUserId();
         return ReviewCountsDto.builder()
                 .today(recordRepository.countUniqueWordsSince(userId, getStartOfToday()))
                 .week(recordRepository.countUniqueWordsSince(userId, getStartOfWeek()))

@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ImportRequest {
 
     private List<ImportRecordDto> records = new ArrayList<>();
@@ -22,6 +24,7 @@ public class ImportRequest {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ImportRecordDto {
         private String id;
         private String englishWord;
@@ -29,7 +32,7 @@ public class ImportRequest {
         private String correctMeaning;
         private List<String> alternatives = new ArrayList<>();
         private List<String> synonyms = new ArrayList<>();
-        private boolean isCorrect;
+        private Boolean isCorrect;
         private String timestamp; // ISO string from frontend
     }
 
@@ -37,13 +40,14 @@ public class ImportRequest {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ImportReviewSessionDto {
         private String id;
         private String filter;
-        private int total;
-        private int correct;
-        private int incorrect;
-        private int accuracy;
+        private Integer total;
+        private Integer correct;
+        private Integer incorrect;
+        private Integer accuracy;
         private List<Map<String, Object>> words = new ArrayList<>();
         private String timestamp; // ISO string from frontend
     }

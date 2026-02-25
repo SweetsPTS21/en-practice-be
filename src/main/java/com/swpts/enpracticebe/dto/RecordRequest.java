@@ -20,5 +20,5 @@ public class RecordRequest {
 
     private List<String> alternatives = new ArrayList<>();
     private List<String> synonyms = new ArrayList<>();
-    private boolean isCorrect;
+    private Boolean isCorrect;
 }
