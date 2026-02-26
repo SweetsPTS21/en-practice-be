@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.dto;
+package com.swpts.enpracticebe.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
@@ -23,6 +23,10 @@ public class DefaultResponse<T> {
 
     public static <T> DefaultResponse<T> success(T data) {
         return new DefaultResponse<>(true, "OK", data);
+    }
+
+    public static <T> DefaultResponse<T> success(String message) {
+        return new DefaultResponse<>(true, message, null);
     }
 
     public static <T> DefaultResponse<T> success(String message, T data) {

@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.ReviewSessionRequest;
+import com.swpts.enpracticebe.dto.request.ReviewSessionRequest;
 import com.swpts.enpracticebe.entity.ReviewSession;
 import com.swpts.enpracticebe.repository.ReviewSessionRepository;
 import lombok.AllArgsConstructor;

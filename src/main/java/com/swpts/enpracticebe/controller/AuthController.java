@@ -1,9 +1,9 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.AuthResponse;
-import com.swpts.enpracticebe.dto.LoginRequest;
-import com.swpts.enpracticebe.dto.RegisterRequest;
 import com.swpts.enpracticebe.dto.UserDto;
+import com.swpts.enpracticebe.dto.request.LoginRequest;
+import com.swpts.enpracticebe.dto.request.RegisterRequest;
+import com.swpts.enpracticebe.dto.response.AuthResponse;
 import com.swpts.enpracticebe.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;

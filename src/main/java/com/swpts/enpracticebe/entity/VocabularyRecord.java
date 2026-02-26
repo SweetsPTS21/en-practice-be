@@ -49,7 +49,7 @@ public class VocabularyRecord {
     private List<String> synonyms = new ArrayList<>();
 
     @Column(name = "is_correct", nullable = false)
-    private boolean isCorrect;
+    private Boolean isCorrect;
 
     @Column(name = "tested_at")
     private Instant testedAt;

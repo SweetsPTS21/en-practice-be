@@ -1,17 +1,11 @@
 package com.swpts.enpracticebe.exception;
 
-import com.swpts.enpracticebe.dto.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 @RestControllerAdvice

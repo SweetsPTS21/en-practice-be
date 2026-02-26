@@ -1,7 +1,7 @@
 package com.swpts.enpracticebe.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.swpts.enpracticebe.dto.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.security.JwtFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;

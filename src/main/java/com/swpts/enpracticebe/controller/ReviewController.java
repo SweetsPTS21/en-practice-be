@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.ReviewSessionRequest;
+import com.swpts.enpracticebe.dto.request.ReviewSessionRequest;
 import com.swpts.enpracticebe.entity.ReviewSession;
 import com.swpts.enpracticebe.service.ReviewService;
 import jakarta.validation.Valid;
@@ -20,7 +20,7 @@ public class ReviewController {
 
     @PostMapping
     public ResponseEntity<ReviewSession> createSession(Authentication auth,
-            @Valid @RequestBody ReviewSessionRequest request) {
+                                                       @Valid @RequestBody ReviewSessionRequest request) {
         UUID userId = (UUID) auth.getPrincipal();
         ReviewSession session = reviewService.createSession(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(session);

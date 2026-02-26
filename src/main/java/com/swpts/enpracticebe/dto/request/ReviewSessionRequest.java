@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.dto;
+package com.swpts.enpracticebe.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

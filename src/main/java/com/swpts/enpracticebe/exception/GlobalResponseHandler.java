@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.exception;
 
-import com.swpts.enpracticebe.dto.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;

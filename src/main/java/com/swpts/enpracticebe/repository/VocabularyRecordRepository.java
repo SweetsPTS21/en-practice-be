@@ -1,6 +1,8 @@
 package com.swpts.enpracticebe.repository;
 
 import com.swpts.enpracticebe.entity.VocabularyRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,6 +12,23 @@ import java.util.List;
 import java.util.UUID;
 
 public interface VocabularyRecordRepository extends JpaRepository<VocabularyRecord, UUID> {
+
+    @Query("""
+                SELECT v FROM VocabularyRecord v
+                WHERE v.userId = :userId
+                  AND (COALESCE(:englishWord, '') = '' OR v.englishWord LIKE %:englishWord%)
+                  AND (:isCorrect IS NULL OR v.isCorrect = :isCorrect)
+                  AND (v.testedAt >= COALESCE(:from, v.testedAt))
+                  AND (v.testedAt <= COALESCE(:to, v.testedAt))
+            """)
+    Page<VocabularyRecord> searchRecord(
+            @Param("userId") UUID userId,
+            @Param("englishWord") String englishWord,
+            @Param("isCorrect") Boolean isCorrect,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            Pageable pageable
+    );
 
     List<VocabularyRecord> findByUserIdOrderByTestedAtDesc(UUID userId);
 

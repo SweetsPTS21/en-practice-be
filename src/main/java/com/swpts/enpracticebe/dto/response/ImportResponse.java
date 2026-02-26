@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.dto;
+package com.swpts.enpracticebe.dto.response;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

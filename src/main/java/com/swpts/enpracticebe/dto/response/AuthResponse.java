@@ -1,5 +1,6 @@
-package com.swpts.enpracticebe.dto;
+package com.swpts.enpracticebe.dto.response;
 
+import com.swpts.enpracticebe.dto.UserDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

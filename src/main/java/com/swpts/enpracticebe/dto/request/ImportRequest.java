@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.dto;
+package com.swpts.enpracticebe.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
