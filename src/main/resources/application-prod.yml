@@ -1,0 +1,22 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/en_practice
+    username: en_practice
+    password: en_practice
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: en-practice-super-secret-key-that-is-at-least-256-bits-long-for-hs256
+  expiration: 604800000  # 7 days in ms
+
+cors:
+  allowed-origins: http://localhost:5173,http://localhost:5174
