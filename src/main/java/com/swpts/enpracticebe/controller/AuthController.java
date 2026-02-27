@@ -1,6 +1,7 @@
 package com.swpts.enpracticebe.controller;
 
 import com.swpts.enpracticebe.dto.UserDto;
+import com.swpts.enpracticebe.dto.request.FirebaseTokenRequest;
 import com.swpts.enpracticebe.dto.request.LoginRequest;
 import com.swpts.enpracticebe.dto.request.RegisterRequest;
 import com.swpts.enpracticebe.dto.response.AuthResponse;
@@ -37,5 +38,11 @@ public class AuthController {
         UUID userId = (UUID) authentication.getPrincipal();
         UserDto user = authService.getMe(userId);
         return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/fcm-token")
+    public ResponseEntity<Void> saveFcmToken(@RequestBody @Valid FirebaseTokenRequest request) {
+        authService.saveFcmToken(request);
+        return ResponseEntity.ok().build();
     }
 }

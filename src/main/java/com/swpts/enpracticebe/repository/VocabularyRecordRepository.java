@@ -116,4 +116,8 @@ public interface VocabularyRecordRepository extends JpaRepository<VocabularyReco
     // Count all unique words
     @Query(value = "SELECT COUNT(DISTINCT v.english_word) FROM vocabulary_records v WHERE v.user_id = :userId", nativeQuery = true)
     long countAllUniqueWords(@Param("userId") UUID userId);
+
+    // Find incorrect records within date range
+    @Query("SELECT v FROM VocabularyRecord v WHERE v.testedAt BETWEEN :start AND :end AND v.isCorrect = false")
+    List<VocabularyRecord> findByTestedAtBetweenAndIsCorrectFalse(@Param("start") Instant start, @Param("end") Instant end);
 }
