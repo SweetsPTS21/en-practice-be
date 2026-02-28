@@ -14,6 +14,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+logging:
+  level:
+    com.swpts.enpracticebe.config.WebSocketConfig: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+    org.springframework.web.socket.sockjs: DEBUG
+    org.springframework.web.socket.handler: DEBUG
+
 jwt:
   secret: en-practice-super-secret-key-that-is-at-least-256-bits-long-for-hs256
   expiration: 604800000  # 7 days in ms

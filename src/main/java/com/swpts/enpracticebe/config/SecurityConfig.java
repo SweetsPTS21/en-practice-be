@@ -26,7 +26,12 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
+    public static final String[] WHITE_LIST_URL = {
+            "/api/auth/**",
+            "/ws/realtime-chat/**",
+            "/websocket-test.html",
+            "/static/**"
+    };
     private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
 
@@ -45,7 +50,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(WHITE_LIST_URL).permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {

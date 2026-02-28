@@ -3,12 +3,14 @@ package com.swpts.enpracticebe.util;
 import com.swpts.enpracticebe.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.security.Principal;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -26,9 +28,24 @@ public class AuthUtil {
         return userId;
     }
 
+    /**
+     * Lấy userId từ Principal (dùng cho WebSocket STOMP session).
+     * Nếu principal null hoặc không chứa userId, fallback về SecurityContext / JWT.
+     */
+    public UUID getUserId(Principal principal) {
+        if (principal instanceof UsernamePasswordAuthenticationToken auth) {
+            Object p = auth.getPrincipal();
+            if (p instanceof UUID u) {
+                return u;
+            }
+        }
+        return getUserId();
+    }
+
     private UUID getPrincipalFromSecurityContext() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return null;
+        if (auth == null)
+            return null;
         Object principal = auth.getPrincipal();
         if (principal instanceof UUID u) {
             return u;
@@ -38,7 +55,8 @@ public class AuthUtil {
 
     private UUID getUsernameFromJwtInRequest() {
         HttpServletRequest request = getCurrentHttpRequest();
-        if (request == null) return null;
+        if (request == null)
+            return null;
 
         String authHeader = request.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -49,8 +67,7 @@ public class AuthUtil {
     }
 
     private HttpServletRequest getCurrentHttpRequest() {
-        ServletRequestAttributes attrs =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         return attrs != null ? attrs.getRequest() : null;
     }
 }
