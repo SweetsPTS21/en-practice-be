@@ -36,7 +36,7 @@ public class WebSocketController {
 
         try {
             // Get AI response using only the content field
-            AiAskResponse result = openClawService.askAi(message.getContent());
+            AiAskResponse result = openClawService.askAi(message.getContent(), userId);
             AiChatResponse response = AiChatResponse.buildResponse(result.getAnswer());
 
             // Send response back to the specific user's topic
@@ -47,7 +47,7 @@ public class WebSocketController {
             log.error("Error processing chat message: {}", e.getMessage(), e);
 
             AiChatResponse errorResponse = AiChatResponse.buildResponse(
-                    "Xin lỗi, tôi không thể trả lời tin nhắn của bạn :((");
+                    "Xin lỗi nha, hiện tại tôi không thể trả lời tin nhắn của bạn");
 
             messagingTemplate.convertAndSend("/topic/realtime-chat/" + userId, errorResponse);
         }
