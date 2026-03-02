@@ -12,8 +12,8 @@ public class FirebaseMessagingService {
 
     private final FirebaseMessaging firebaseMessaging;
 
-    public FirebaseMessagingService() {
-        this.firebaseMessaging = FirebaseMessaging.getInstance();
+    public FirebaseMessagingService(FirebaseMessaging firebaseMessaging) {
+        this.firebaseMessaging = firebaseMessaging;
     }
 
     public String sendNotification(String token, String title, String body) {
@@ -35,7 +35,8 @@ public class FirebaseMessagingService {
         }
     }
 
-    public String sendNotificationWithData(String token, String title, String body, java.util.Map<String, String> data) {
+    public String sendNotificationWithData(String token, String title, String body,
+            java.util.Map<String, String> data) {
         try {
             Notification notification = Notification.builder()
                     .setTitle(title)
@@ -74,7 +75,8 @@ public class FirebaseMessagingService {
         }
     }
 
-    public BatchResponse sendMulticastNotificationWithData(List<String> tokens, String title, String body, java.util.Map<String, String> data) {
+    public BatchResponse sendMulticastNotificationWithData(List<String> tokens, String title, String body,
+            java.util.Map<String, String> data) {
         try {
             Notification notification = Notification.builder()
                     .setTitle(title)

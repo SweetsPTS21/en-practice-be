@@ -3,12 +3,13 @@ package com.swpts.enpracticebe.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
-import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -19,22 +20,25 @@ public class FirebaseConfig {
     @Value("${firebase.config.file}")
     private String firebaseConfigPath;
 
-    @PostConstruct
-    public void initializeFirebase() {
-        try {
-            if (FirebaseApp.getApps().isEmpty()) {
-                InputStream serviceAccount = new ClassPathResource(firebaseConfigPath).getInputStream();
-                
-                FirebaseOptions options = FirebaseOptions.builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
-
-                FirebaseApp.initializeApp(options);
-                log.info("Firebase application has been initialized successfully");
-            }
-        } catch (IOException e) {
-            log.error("Error initializing Firebase", e);
-            throw new RuntimeException("Failed to initialize Firebase", e);
+    @Bean
+    public FirebaseApp firebaseApp() throws IOException {
+        if (!FirebaseApp.getApps().isEmpty()) {
+            return FirebaseApp.getInstance();
         }
+
+        InputStream serviceAccount = new ClassPathResource(firebaseConfigPath).getInputStream();
+
+        FirebaseOptions options = FirebaseOptions.builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .build();
+
+        FirebaseApp app = FirebaseApp.initializeApp(options);
+        log.info("Firebase application has been initialized successfully");
+        return app;
+    }
+
+    @Bean
+    public FirebaseMessaging firebaseMessaging(FirebaseApp firebaseApp) {
+        return FirebaseMessaging.getInstance(firebaseApp);
     }
 }

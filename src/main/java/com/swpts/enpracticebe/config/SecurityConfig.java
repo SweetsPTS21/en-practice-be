@@ -30,7 +30,8 @@ public class SecurityConfig {
             "/api/auth/**",
             "/ws/realtime-chat/**",
             "/websocket-test.html",
-            "/static/**"
+            "/static/**",
+            "/api/tts/**"
     };
     private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
