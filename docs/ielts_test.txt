@@ -1,0 +1,196 @@
+Kịch bản phát triển web luyện thi IELTS bài bản, thực tế
+
+🎯 1. Xác định rõ mục tiêu sản phẩm
+Mục tiêu chính:
+
+Tập trung vào dạng bài hay ra thi
+
+Luyện đủ 4 kỹ năng: Listening – Reading – Writing – Speaking
+
+Có phân tích điểm yếu cá nhân
+
+Có thể scale thành mô hình subscription
+
+🧠 2. Xác định các dạng bài trọng tâm (cực quan trọng)
+🎧 Listening
+
+Tập trung vào:
+
+Form completion
+
+Multiple choice
+
+Map labeling
+
+Sentence completion
+
+Matching
+
+📖 Reading
+
+True / False / Not Given
+
+Matching headings
+
+Multiple choice
+
+Summary completion
+
+Yes / No / Not Given
+
+✍ Writing
+
+Task 1: Line graph, Bar chart, Process, Map
+
+Task 2: Opinion, Discussion, Problem-Solution, Two-part question
+
+🗣 Speaking
+
+Part 1: Chủ đề phổ biến
+
+Part 2: Cue card ngân hàng đề
+
+Part 3: Follow-up discussion
+
+👉 Tức là bạn không cần build mọi thứ. Chỉ cần tập trung vào 80% dạng bài ra thi nhiều nhất.
+
+🏗 3. Roadmap phát triển (theo giai đoạn)
+🚀 Giai đoạn 1 – MVP (2–3 tháng)
+🔹 Core Features:
+1️⃣ User System
+
+Đăng ký / đăng nhập
+
+Lưu lịch sử làm bài
+
+Tracking band theo từng kỹ năng
+
+2️⃣ Listening & Reading (build trước)
+
+Vì:
+
+Dễ chấm điểm tự động
+
+Có logic rõ ràng
+
+Không cần AI phức tạp
+
+Tính năng:
+
+Làm full test theo timer
+
+Review đáp án
+
+Phân tích lỗi theo dạng bài
+
+Hiển thị band ước tính
+
+👉 Đây là phần có thể launch sớm để test thị trường.
+
+🚀 Giai đoạn 2 – Writing
+Tính năng:
+
+Hiển thị đề theo dạng bài
+
+Cho phép nộp bài
+
+Chấm điểm theo:
+
+Task Response
+
+Coherence
+
+Lexical Resource
+
+Grammar
+
+2 hướng:
+
+Option 1 – AI chấm điểm
+
+Dùng API LLM
+
+Trả feedback chi tiết
+
+Highlight lỗi grammar
+
+Option 2 – Hybrid
+
+AI chấm sơ bộ
+
+Admin giáo viên chỉnh sửa
+
+👉 Writing là nơi bạn có thể monetize mạnh nhất.
+
+🚀 Giai đoạn 3 – Speaking
+Tính năng:
+
+Hiển thị câu hỏi
+
+Ghi âm trực tiếp trên web
+
+AI:
+
+Phân tích fluency
+
+Grammar
+
+Vocabulary
+
+Pronunciation
+
+Chuyển speech → text để highlight lỗi
+
+👉 Đây là điểm khác biệt lớn nếu làm tốt.
+
+📊 4. Feature nâng cao (giữ user lâu)
+📈 Dashboard thông minh
+
+Band trung bình từng kỹ năng
+
+Dạng bài yếu nhất
+
+Lộ trình cải thiện cá nhân hóa
+
+🎯 Practice Mode thông minh
+
+Ví dụ:
+
+Bạn sai nhiều dạng True/False/Not Given
+→ hệ thống auto đề xuất luyện riêng dạng này
+
+🔥 Gamification
+
+Streak ngày học
+
+Rank
+
+Leaderboard
+
+Huy hiệu theo band
+
+6. Kiến trúc kỹ thuật (phù hợp bạn)
+
+Vì bạn có kinh nghiệm:
+
+Java + Spring Boot + ReactJS
+
+Backend:
+
+Spring Boot
+
+PostgreSQL
+
+Redis (cache đề thi)
+
+Kafka (nếu xử lý AI async)
+
+Storage cho audio (S3 compatible)
+
+Frontend:
+
+React
+
+Tailwind / MUI
+
+Waveform audio recorder cho Speaking
