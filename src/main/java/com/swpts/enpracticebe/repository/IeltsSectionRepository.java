@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface IeltsSectionRepository extends JpaRepository<IeltsSection, UUID> {
 
     List<IeltsSection> findByTestIdOrderBySectionOrder(UUID testId);
+
+    void deleteByTestId(UUID testId);
 }

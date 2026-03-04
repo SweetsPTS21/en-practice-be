@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.entity;
 
+import com.swpts.enpracticebe.constant.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,11 @@ public class User {
 
     @Column(name = "display_name", nullable = false)
     private String displayName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private Role role = Role.USER;
 
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.config;
 
+import com.swpts.enpracticebe.constant.Role;
 import com.swpts.enpracticebe.entity.User;
 import com.swpts.enpracticebe.repository.UserRepository;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ public class DataSeeder implements CommandLineRunner {
                     .email("admin@enpractice.com")
                     .passwordHash(passwordEncoder.encode("admin123"))
                     .displayName("Admin")
+                    .role(Role.ADMIN)
                     .build();
 
             userRepository.save(admin);

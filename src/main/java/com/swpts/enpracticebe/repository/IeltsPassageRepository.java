@@ -11,4 +11,8 @@ import java.util.UUID;
 public interface IeltsPassageRepository extends JpaRepository<IeltsPassage, UUID> {
 
     List<IeltsPassage> findBySectionIdOrderByPassageOrder(UUID sectionId);
+
+    List<IeltsPassage> findBySectionIdIn(List<UUID> sectionIds);
+
+    void deleteBySectionIdIn(List<UUID> sectionIds);
 }

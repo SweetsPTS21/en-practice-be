@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -25,13 +26,15 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
     public static final String[] WHITE_LIST_URL = {
             "/api/auth/**",
             "/ws/realtime-chat/**",
             "/websocket-test.html",
             "/static/**",
-            "/api/tts/**"
+            "/api/tts/**",
+            "/api/files/presigned-url",
     };
     private final JwtFilter jwtFilter;
     private final ObjectMapper objectMapper;
