@@ -205,10 +205,13 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
         if (!passages.isEmpty()) {
             List<UUID> passageIds = passages.stream().map(IeltsPassage::getId).collect(Collectors.toList());
             questionRepository.deleteByPassageIdIn(passageIds);
+            questionRepository.flush();
             passageRepository.deleteBySectionIdIn(sectionIds);
+            passageRepository.flush();
         }
 
         sectionRepository.deleteByTestId(testId);
+        sectionRepository.flush();
     }
 
     private Page<IeltsTest> findTests(boolean hasSkill, boolean hasDifficulty, boolean hasPublished,
