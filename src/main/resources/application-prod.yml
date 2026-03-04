@@ -21,3 +21,12 @@ tts:
   api-key: api-key-for-production
   voice-name: en-US-Neural2-J
   language-code: en-US
+
+backblaze:
+  s3:
+    endpoint: enpoint.backblazeb2.com
+    region: us-west-002
+    access-key-id: access-key-id
+    secret-access-key: secret-access
+    bucket-name: en-practice-bucket
+    worker-shared-secret: worker-shared-secret
