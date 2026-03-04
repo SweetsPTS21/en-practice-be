@@ -24,9 +24,10 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-    public String generateToken(UUID userId) {
+    public String generateToken(UUID userId, String role) {
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim("role", role)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key)
@@ -34,23 +35,29 @@ public class JwtUtil {
     }
 
     public UUID extractUserId(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(key)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        Claims claims = getClaims(token);
         return UUID.fromString(claims.getSubject());
+    }
+
+    public String extractRole(String token) {
+        Claims claims = getClaims(token);
+        return claims.get("role", String.class);
     }
 
     public boolean isValid(String token) {
         try {
-            Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token);
+            getClaims(token);
             return true;
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

@@ -39,7 +39,7 @@ public class AuthService {
                 .build();
 
         user = userRepository.save(user);
-        String token = jwtUtil.generateToken(user.getId());
+        String token = jwtUtil.generateToken(user.getId(), user.getRole().name());
 
         return AuthResponse.builder()
                 .token(token)
@@ -55,7 +55,7 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
-        String token = jwtUtil.generateToken(user.getId());
+        String token = jwtUtil.generateToken(user.getId(), user.getRole().name());
 
         return AuthResponse.builder()
                 .token(token)
@@ -73,23 +73,22 @@ public class AuthService {
     public void saveFcmToken(FirebaseTokenRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         UUID userId = (UUID) authentication.getPrincipal();
-        
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         fcmTokenRepository.findByUserId(user.getId())
                 .ifPresentOrElse(
-                    existingToken -> {
-                        existingToken.setToken(request.getFcmToken());
-                        fcmTokenRepository.save(existingToken);
-                    },
-                    () -> {
-                        FcmToken newToken = new FcmToken();
-                        newToken.setUserId(user.getId());
-                        newToken.setToken(request.getFcmToken());
-                        fcmTokenRepository.save(newToken);
-                    }
-                );
+                        existingToken -> {
+                            existingToken.setToken(request.getFcmToken());
+                            fcmTokenRepository.save(existingToken);
+                        },
+                        () -> {
+                            FcmToken newToken = new FcmToken();
+                            newToken.setUserId(user.getId());
+                            newToken.setToken(request.getFcmToken());
+                            fcmTokenRepository.save(newToken);
+                        });
     }
 
     private UserDto toDto(User user) {
@@ -97,6 +96,7 @@ public class AuthService {
                 .id(user.getId())
                 .email(user.getEmail())
                 .displayName(user.getDisplayName())
+                .role(user.getRole().name())
                 .build();
     }
 }
