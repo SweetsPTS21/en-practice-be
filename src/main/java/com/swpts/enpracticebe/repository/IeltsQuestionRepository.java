@@ -26,4 +26,6 @@ public interface IeltsQuestionRepository extends JpaRepository<IeltsQuestion, UU
                 ORDER BY s.sectionOrder, p.passageOrder, q.questionOrder
             """)
     List<IeltsQuestion> findAllByTestId(@Param("testId") UUID testId);
+
+    void deleteByPassageIdIn(List<UUID> passageIds);
 }
