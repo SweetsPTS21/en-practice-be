@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,12 +13,14 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class IeltsTestDetailResponse {
     private UUID id;
     private String title;
     private String skill;
     private Integer timeLimitMinutes;
     private String difficulty;
+    private Boolean isPublished;
     private List<SectionDto> sections;
 
     @Data
@@ -49,12 +52,14 @@ public class IeltsTestDetailResponse {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class QuestionDto {
         private UUID id;
         private Integer questionOrder;
         private String questionType;
         private String questionText;
         private List<String> options;
-        // NOTE: correctAnswers is intentionally excluded for test-taking
+        private List<String> correctAnswers;
+        private String explanation;
     }
 }

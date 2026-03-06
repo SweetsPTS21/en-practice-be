@@ -7,6 +7,7 @@ import com.swpts.enpracticebe.dto.response.*;
 import com.swpts.enpracticebe.entity.*;
 import com.swpts.enpracticebe.repository.*;
 import com.swpts.enpracticebe.service.IeltsTestService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -63,6 +64,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
     // ─── Public API ─────────────────────────────────────────────────────────────
 
     @Override
+    @Cacheable(value = "ieltsTestList", key = "#request.page + '-' + #request.size + '-' + #request.skill + '-' + #request.difficulty")
     public PageResponse<IeltsTestListResponse> getTests(IeltsTestFilterRequest request) {
         PageRequest pageable = PageRequest.of(request.getPage(), request.getSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -101,6 +103,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
     }
 
     @Override
+    @Cacheable(value = "ieltsTestDetail", key = "#testId")
     public IeltsTestDetailResponse getTestDetail(UUID testId) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));

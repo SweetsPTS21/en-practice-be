@@ -15,13 +15,13 @@ public class CacheConfig {
     public Caffeine<Object, Object> caffeineConfig() {
         return Caffeine.newBuilder()
                 .maximumSize(1000)
-                .expireAfterWrite(10, TimeUnit.MINUTES)
+                .expireAfterWrite(60, TimeUnit.MINUTES)
                 .recordStats();
     }
 
     @Bean
     public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("presignUrl");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("presignUrl", "ieltsTestDetail", "adminIeltsTestList", "ieltsTestList");
         cacheManager.setCaffeine(caffeine);
         return cacheManager;
     }

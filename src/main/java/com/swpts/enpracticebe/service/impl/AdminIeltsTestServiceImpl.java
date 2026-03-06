@@ -3,7 +3,7 @@ package com.swpts.enpracticebe.service.impl;
 import com.swpts.enpracticebe.dto.request.AdminIeltsTestFilterRequest;
 import com.swpts.enpracticebe.dto.request.CreateIeltsTestRequest;
 import com.swpts.enpracticebe.dto.request.UpdateIeltsTestRequest;
-import com.swpts.enpracticebe.dto.response.AdminIeltsTestDetailResponse;
+import com.swpts.enpracticebe.dto.response.IeltsTestDetailResponse;
 import com.swpts.enpracticebe.dto.response.AdminIeltsTestListResponse;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.entity.IeltsPassage;
@@ -15,6 +15,9 @@ import com.swpts.enpracticebe.repository.IeltsQuestionRepository;
 import com.swpts.enpracticebe.repository.IeltsSectionRepository;
 import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.AdminIeltsTestService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -47,6 +50,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     // ─── List Tests ──────────────────────────────────────────────────────────────
 
     @Override
+    @Cacheable(value = "adminIeltsTestList", key = "#request.page + '-' + #request.size + '-' + #request.skill + '-' + #request.difficulty + '-' + #request.isPublished")
     public PageResponse<AdminIeltsTestListResponse> listTests(AdminIeltsTestFilterRequest request) {
         PageRequest pageable = PageRequest.of(request.getPage(), request.getSize(),
                 Sort.by(Sort.Direction.DESC, "createdAt"));
@@ -73,7 +77,8 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     // ─── Get Test Detail ─────────────────────────────────────────────────────────
 
     @Override
-    public AdminIeltsTestDetailResponse getTestDetail(UUID testId) {
+    @Cacheable(value = "ieltsTestDetail", key = "#testId")
+    public IeltsTestDetailResponse getTestDetail(UUID testId) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
         return buildDetailResponse(test);
@@ -83,7 +88,11 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
     @Override
     @Transactional
-    public AdminIeltsTestDetailResponse createTest(CreateIeltsTestRequest request) {
+    @Caching(evict = {
+            @CacheEvict(value = "adminIeltsTestList", allEntries = true),
+            @CacheEvict(value = "ieltsTestList", allEntries = true)
+    })
+    public IeltsTestDetailResponse createTest(CreateIeltsTestRequest request) {
         IeltsTest test = IeltsTest.builder()
                 .title(request.getTitle())
                 .skill(IeltsTest.Skill.valueOf(request.getSkill()))
@@ -102,7 +111,12 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
     @Override
     @Transactional
-    public AdminIeltsTestDetailResponse updateTest(UUID testId, UpdateIeltsTestRequest request) {
+    @Caching(evict = {
+            @CacheEvict(value = "ieltsTestDetail", key = "#testId"),
+            @CacheEvict(value = "adminIeltsTestList", allEntries = true),
+            @CacheEvict(value = "ieltsTestList", allEntries = true)
+    })
+    public IeltsTestDetailResponse updateTest(UUID testId, UpdateIeltsTestRequest request) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
 
@@ -127,6 +141,11 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ieltsTestDetail", key = "#testId"),
+            @CacheEvict(value = "adminIeltsTestList", allEntries = true),
+            @CacheEvict(value = "ieltsTestList", allEntries = true)
+    })
     public void deleteTest(UUID testId) {
         if (!testRepository.existsById(testId)) {
             throw new RuntimeException("Test not found: " + testId);
@@ -139,6 +158,11 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "ieltsTestDetail", key = "#testId"),
+            @CacheEvict(value = "adminIeltsTestList", allEntries = true),
+            @CacheEvict(value = "ieltsTestList", allEntries = true)
+    })
     public void togglePublish(UUID testId, boolean published) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
@@ -254,21 +278,21 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
                 .build();
     }
 
-    private AdminIeltsTestDetailResponse buildDetailResponse(IeltsTest test) {
+    private IeltsTestDetailResponse buildDetailResponse(IeltsTest test) {
         List<IeltsSection> sections = sectionRepository.findByTestIdOrderBySectionOrder(test.getId());
 
-        List<AdminIeltsTestDetailResponse.SectionDto> sectionDtos = sections.stream()
+        List<IeltsTestDetailResponse.SectionDto> sectionDtos = sections.stream()
                 .map(section -> {
                     List<IeltsPassage> passages = passageRepository
                             .findBySectionIdOrderByPassageOrder(section.getId());
 
-                    List<AdminIeltsTestDetailResponse.PassageDto> passageDtos = passages.stream()
+                    List<IeltsTestDetailResponse.PassageDto> passageDtos = passages.stream()
                             .map(passage -> {
                                 List<IeltsQuestion> questions = questionRepository
                                         .findByPassageIdOrderByQuestionOrder(passage.getId());
 
-                                List<AdminIeltsTestDetailResponse.QuestionDto> questionDtos = questions.stream()
-                                        .map(q -> AdminIeltsTestDetailResponse.QuestionDto.builder()
+                                List<IeltsTestDetailResponse.QuestionDto> questionDtos = questions.stream()
+                                        .map(q -> IeltsTestDetailResponse.QuestionDto.builder()
                                                 .id(q.getId())
                                                 .questionOrder(q.getQuestionOrder())
                                                 .questionType(q.getQuestionType().name())
@@ -279,7 +303,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
                                                 .build())
                                         .collect(Collectors.toList());
 
-                                return AdminIeltsTestDetailResponse.PassageDto.builder()
+                                return IeltsTestDetailResponse.PassageDto.builder()
                                         .id(passage.getId())
                                         .passageOrder(passage.getPassageOrder())
                                         .title(passage.getTitle())
@@ -289,7 +313,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
                             })
                             .collect(Collectors.toList());
 
-                    return AdminIeltsTestDetailResponse.SectionDto.builder()
+                    return IeltsTestDetailResponse.SectionDto.builder()
                             .id(section.getId())
                             .sectionOrder(section.getSectionOrder())
                             .title(section.getTitle())
@@ -300,7 +324,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
                 })
                 .collect(Collectors.toList());
 
-        return AdminIeltsTestDetailResponse.builder()
+        return IeltsTestDetailResponse.builder()
                 .id(test.getId())
                 .title(test.getTitle())
                 .skill(test.getSkill().name())

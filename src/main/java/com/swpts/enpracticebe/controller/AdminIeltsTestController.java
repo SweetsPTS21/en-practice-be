@@ -3,7 +3,7 @@ package com.swpts.enpracticebe.controller;
 import com.swpts.enpracticebe.dto.request.AdminIeltsTestFilterRequest;
 import com.swpts.enpracticebe.dto.request.CreateIeltsTestRequest;
 import com.swpts.enpracticebe.dto.request.UpdateIeltsTestRequest;
-import com.swpts.enpracticebe.dto.response.AdminIeltsTestDetailResponse;
+import com.swpts.enpracticebe.dto.response.IeltsTestDetailResponse;
 import com.swpts.enpracticebe.dto.response.AdminIeltsTestListResponse;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.dto.response.PageResponse;
@@ -43,9 +43,9 @@ public class AdminIeltsTestController {
      * GET /api/admin/ielts/tests/{id}
      */
     @GetMapping("/tests/{id}")
-    public ResponseEntity<DefaultResponse<AdminIeltsTestDetailResponse>> getTestDetail(
+    public ResponseEntity<DefaultResponse<IeltsTestDetailResponse>> getTestDetail(
             @PathVariable UUID id) {
-        AdminIeltsTestDetailResponse result = adminIeltsTestService.getTestDetail(id);
+        IeltsTestDetailResponse result = adminIeltsTestService.getTestDetail(id);
         return ResponseEntity.ok(DefaultResponse.success(result));
     }
 
@@ -53,9 +53,9 @@ public class AdminIeltsTestController {
      * POST /api/admin/ielts/tests
      */
     @PostMapping("/tests")
-    public ResponseEntity<DefaultResponse<AdminIeltsTestDetailResponse>> createTest(
+    public ResponseEntity<DefaultResponse<IeltsTestDetailResponse>> createTest(
             @Valid @RequestBody CreateIeltsTestRequest request) {
-        AdminIeltsTestDetailResponse result = adminIeltsTestService.createTest(request);
+        IeltsTestDetailResponse result = adminIeltsTestService.createTest(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(DefaultResponse.success(result));
     }
 
@@ -63,10 +63,10 @@ public class AdminIeltsTestController {
      * PUT /api/admin/ielts/tests/{id}
      */
     @PutMapping("/tests/{id}")
-    public ResponseEntity<DefaultResponse<AdminIeltsTestDetailResponse>> updateTest(
+    public ResponseEntity<DefaultResponse<IeltsTestDetailResponse>> updateTest(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateIeltsTestRequest request) {
-        AdminIeltsTestDetailResponse result = adminIeltsTestService.updateTest(id, request);
+        IeltsTestDetailResponse result = adminIeltsTestService.updateTest(id, request);
         return ResponseEntity.ok(DefaultResponse.success(result));
     }
 
