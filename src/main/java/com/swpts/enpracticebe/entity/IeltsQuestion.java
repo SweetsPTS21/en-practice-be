@@ -56,6 +56,7 @@ public class IeltsQuestion {
         TRUE_FALSE_NOT_GIVEN,
         MATCHING_HEADINGS,
         SUMMARY_COMPLETION,
-        YES_NO_NOT_GIVEN
+        YES_NO_NOT_GIVEN,
+        PASSAGE_COMPLETION
     }
 }
