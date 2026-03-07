@@ -120,6 +120,14 @@ AI chấm sơ bộ
 
 Admin giáo viên chỉnh sửa
 
+Tính năng Admin Panel cho Writing
+- Tạo đề bài
+- Nội dung bài viết (định dạng md)
+- Cấu hình để AI chấm điểm (prompt)
+- Luồng AI chấm điểm sẽ thực hiện bất đồng bộ, người dùng submit bài xong sẽ hiện thị trạng thái "AI đang chấm điểm", 
+phía backend thực hiện call api AI (hiện có) để thực hiện chấm điểm (job async). Khi có response sẽ thực hiện cập
+nhật trạng thái vào DB và gửi notify đến user
+
 👉 Writing là nơi bạn có thể monetize mạnh nhất.
 
 🚀 Giai đoạn 3 – Speaking
