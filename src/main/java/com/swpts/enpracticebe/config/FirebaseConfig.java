@@ -12,6 +12,7 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 
 @Configuration
 @Slf4j
@@ -26,15 +27,22 @@ public class FirebaseConfig {
             return FirebaseApp.getInstance();
         }
 
-        InputStream serviceAccount = new ClassPathResource(firebaseConfigPath).getInputStream();
+        InputStream serviceAccount =
+                new ClassPathResource(firebaseConfigPath).getInputStream();
+
+        GoogleCredentials credentials = GoogleCredentials
+                .fromStream(serviceAccount)
+                .createScoped(List.of("https://www.googleapis.com/auth/firebase.messaging"));
 
         FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setCredentials(credentials)
                 .build();
+        if (FirebaseApp.getApps().isEmpty()) {
+            FirebaseApp.initializeApp(options);
+        }
 
-        FirebaseApp app = FirebaseApp.initializeApp(options);
         log.info("Firebase application has been initialized successfully");
-        return app;
+        return FirebaseApp.getInstance();
     }
 
     @Bean
