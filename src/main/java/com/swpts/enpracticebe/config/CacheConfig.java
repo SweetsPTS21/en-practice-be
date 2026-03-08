@@ -22,7 +22,8 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager(Caffeine<Object, Object> caffeine) {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("presignUrl", "ieltsTestDetail",
-                "adminIeltsTestList", "ieltsTestList", "adminWritingTaskList", "writingTaskDetail", "writingTaskList");
+                "adminIeltsTestList", "ieltsTestList", "adminWritingTaskList", "writingTaskDetail", "writingTaskList",
+                "adminSpeakingTopicList", "speakingTopicDetail", "speakingTopicList");
         cacheManager.setCaffeine(caffeine);
         return cacheManager;
     }

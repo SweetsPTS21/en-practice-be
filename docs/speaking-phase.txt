@@ -1,0 +1,378 @@
+🎯 Mục tiêu của Speaking Module
+
+User có thể:
+
+1️⃣ Xem câu hỏi Speaking (Part 1,2,3)
+2️⃣ Record audio trực tiếp trên web
+3️⃣ Upload audio lên server
+4️⃣ AI xử lý:
+
+Speech → Text
+
+Phân tích grammar
+
+Phân tích fluency
+
+Phân tích pronunciation
+5️⃣ Trả về:
+
+Estimated band score
+
+Highlight lỗi
+
+Feedback cải thiện
+
+🧱 Kiến trúc tổng thể
+React Client
+     |
+     |
+Record Audio
+     |
+     v
+Spring Boot API
+     |
+     |
+Upload Audio (S3 / Storage)
+     |
+     v
+Speech Processing Service
+     |
+     +---- Speech-to-Text
+     |
+     +---- AI Evaluation
+     |
+     v
+Store Feedback
+     |
+     v
+Return Analysis to User
+🖥 Frontend (React)
+🎙 Audio Recording
+
+Dùng Web Audio API
+
+Hoặc library:
+
+mic-recorder-to-mp3
+
+react-audio-recorder
+
+react-media-recorder
+
+Ví dụ:
+
+const { startRecording, stopRecording } = useReactMediaRecorder({
+  audio: true
+});
+
+Sau khi stop:
+
+audio blob -> upload API
+UI Flow
+
+Speaking test screen:
+
+Question
+------------------
+
+Describe a place you like.
+
+[Start Recording]
+
+Timer: 2:00
+
+[Stop]
+
+------------------
+
+Submit
+Waveform (nice UX)
+
+Thư viện tốt:
+
+wavesurfer.js
+
+Cho phép:
+
+replay audio
+
+waveform visualization
+
+⚙ Backend (Spring Boot)
+API endpoints
+POST /speaking/start
+POST /speaking/upload
+GET /speaking/result/{id}
+Upload audio
+
+User upload file:
+
+multipart/form-data
+audio_file
+
+Spring Boot:
+
+@PostMapping("/upload")
+public ResponseEntity<?> upload(
+        @RequestParam MultipartFile audio
+) {
+    String url = storageService.upload(audio);
+}
+☁ Storage audio
+
+Không nên lưu trong DB.
+
+Nên dùng:
+
+S3
+
+Cloudflare R2
+
+Backblaze B2
+
+Bạn từng hỏi Backblaze S3, cái này rất hợp.
+
+Structure:
+
+speaking/
+   user_id/
+       attempt_id.wav
+🧠 Speech to Text
+
+Đây là bước quan trọng.
+
+Option 1 (tốt nhất)
+🥇 OpenAI Whisper
+
+Ưu điểm:
+
+cực chính xác
+
+hiểu accent tốt
+
+Flow:
+
+audio -> whisper -> transcript
+
+Ví dụ response:
+
+I really enjoy visiting the park near my house because...
+Option 2
+
+Google Speech API
+
+Option 3 (self host)
+
+Whisper local
+
+Nhưng cần:
+
+GPU
+🧠 AI Speaking Evaluation
+
+Sau khi có transcript:
+
+text + audio -> evaluate
+Evaluation Criteria
+
+Theo IELTS rubric:
+
+1️⃣ Fluency and coherence
+
+Check:
+
+speech pauses
+
+filler words
+
+sentence flow
+
+2️⃣ Lexical resource
+
+Check:
+
+vocabulary variety
+
+idioms
+
+repetition
+
+3️⃣ Grammar
+
+Check:
+
+sentence complexity
+
+tense accuracy
+
+4️⃣ Pronunciation
+
+Check:
+
+phoneme accuracy
+
+stress patterns
+
+📊 AI evaluation pipeline
+Audio
+ |
+ |--> Speech to text
+ |
+Transcript
+ |
+ |--> AI analysis
+ |
+Score + Feedback
+🤖 AI Prompt design
+
+Prompt gửi cho AI:
+
+You are an IELTS speaking examiner.
+
+Evaluate the following answer based on IELTS speaking band descriptors.
+
+Criteria:
+- Fluency
+- Lexical Resource
+- Grammar
+- Pronunciation
+
+Answer:
+{transcript}
+
+Return:
+
+Band Score
+Fluency feedback
+Grammar mistakes
+Better sample answer
+Example response
+Band: 6.5
+
+Fluency:
+Speech is mostly fluent but contains pauses.
+
+Grammar:
+Some incorrect tense usage.
+
+Vocabulary:
+Limited range of expressions.
+
+Suggestions:
+Try using more complex sentences.
+📦 Async Processing (quan trọng)
+
+AI evaluation không nên sync request.
+
+Flow:
+
+Upload audio
+     |
+Return "processing"
+     |
+Kafka / Queue
+     |
+AI Worker
+     |
+Save result
+Queue options
+
+Kafka
+
+RabbitMQ
+
+Redis queue
+
+⚡ Worker Service
+
+Worker service xử lý:
+
+1 receive job
+2 download audio
+3 run speech to text
+4 call AI
+5 save result
+🗄 Database design
+
+Tables:
+
+speaking_questions
+id
+part
+question
+cue_card
+speaking_attempts
+id
+user_id
+question_id
+audio_url
+transcript
+band_score
+created_at
+speaking_feedback
+attempt_id
+fluency_score
+grammar_score
+vocabulary_score
+pronunciation_score
+feedback_text
+📈 Dashboard
+
+User sẽ thấy:
+
+Speaking Band: 6.0
+
+Fluency: 6
+Grammar: 5.5
+Vocabulary: 6
+Pronunciation: 6.5
+🔥 Feature nâng cao (nên có)
+AI Follow-up question
+
+AI hỏi tiếp giống giám khảo.
+
+User answer
+     ↓
+AI generate question
+     ↓
+User answer again
+Real-time speaking practice
+AI interviewer mode
+
+giống:
+
+ChatGPT voice
+💰 Cost estimate
+
+Nếu dùng:
+
+Whisper API + LLM
+
+Chi phí:
+
+~ $0.006 / minute audio
+
+1000 users / ngày vẫn khá rẻ.
+
+🚀 Scale architecture
+
+Sau này:
+
+Frontend
+   |
+API Gateway
+   |
+Spring Boot
+   |
+Kafka
+   |
+AI Worker cluster
+💡 Quan trọng nhất khi build
+
+Không phải AI.
+
+Mà là:
+
+Question bank chất lượng
+
+IELTS lặp dạng bài rất nhiều.
