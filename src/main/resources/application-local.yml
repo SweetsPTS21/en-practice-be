@@ -10,7 +10,7 @@ jwt:
 
 firebase:
   config:
-    file: firebase-service-account.json
+    base64: base64-encoded-firebase-service-account-json
 
 openclaw:
   gateway:
