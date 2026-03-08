@@ -1,8 +1,8 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.response.AiAskResponse;
-import com.swpts.enpracticebe.dto.response.AiExplainResponse;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
 import com.swpts.enpracticebe.service.OpenClawService;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;

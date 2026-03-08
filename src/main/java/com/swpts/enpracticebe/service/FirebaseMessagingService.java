@@ -36,7 +36,7 @@ public class FirebaseMessagingService {
     }
 
     public String sendNotificationWithData(String token, String title, String body,
-            java.util.Map<String, String> data) {
+                                           java.util.Map<String, String> data) {
         try {
             Notification notification = Notification.builder()
                     .setTitle(title)
@@ -68,7 +68,7 @@ public class FirebaseMessagingService {
                     .setNotification(notification)
                     .build();
 
-            return firebaseMessaging.sendMulticast(message);
+            return firebaseMessaging.sendEachForMulticast(message);
         } catch (FirebaseMessagingException e) {
             log.error("Error sending multicast notification", e);
             throw new RuntimeException("Failed to send multicast notification", e);
@@ -76,7 +76,7 @@ public class FirebaseMessagingService {
     }
 
     public BatchResponse sendMulticastNotificationWithData(List<String> tokens, String title, String body,
-            java.util.Map<String, String> data) {
+                                                           java.util.Map<String, String> data) {
         try {
             Notification notification = Notification.builder()
                     .setTitle(title)
@@ -89,7 +89,7 @@ public class FirebaseMessagingService {
                     .putAllData(data)
                     .build();
 
-            return firebaseMessaging.sendMulticast(message);
+            return firebaseMessaging.sendEachForMulticast(message);
         } catch (FirebaseMessagingException e) {
             log.error("Error sending multicast notification with data", e);
             throw new RuntimeException("Failed to send multicast notification with data", e);

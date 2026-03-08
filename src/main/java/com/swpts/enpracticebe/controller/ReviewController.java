@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.ReviewSessionRequest;
+import com.swpts.enpracticebe.dto.request.vocabulary.ReviewSessionRequest;
 import com.swpts.enpracticebe.entity.ReviewSession;
 import com.swpts.enpracticebe.service.ReviewService;
 import jakarta.validation.Valid;

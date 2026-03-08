@@ -1,7 +1,7 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.response.AiAskResponse;
-import com.swpts.enpracticebe.dto.response.AiExplainResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
 
 import java.util.UUID;
 

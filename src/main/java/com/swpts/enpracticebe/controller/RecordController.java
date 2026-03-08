@@ -1,12 +1,11 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.ChartEntry;
-import com.swpts.enpracticebe.dto.ReviewCountsDto;
-import com.swpts.enpracticebe.dto.ReviewWordDto;
-import com.swpts.enpracticebe.dto.request.ImportRequest;
-import com.swpts.enpracticebe.dto.request.ListRecordRequest;
-import com.swpts.enpracticebe.dto.request.RecordRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.vocabulary.ImportRequest;
+import com.swpts.enpracticebe.dto.request.vocabulary.ListRecordRequest;
+import com.swpts.enpracticebe.dto.request.vocabulary.RecordRequest;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.vocabulary.*;
 import com.swpts.enpracticebe.service.RecordService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;

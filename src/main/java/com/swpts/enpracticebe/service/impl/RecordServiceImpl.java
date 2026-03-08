@@ -1,16 +1,10 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.ChartEntry;
-import com.swpts.enpracticebe.dto.FrequentlyWrongWord;
-import com.swpts.enpracticebe.dto.ReviewCountsDto;
-import com.swpts.enpracticebe.dto.ReviewWordDto;
-import com.swpts.enpracticebe.dto.request.ImportRequest;
-import com.swpts.enpracticebe.dto.request.ListRecordRequest;
-import com.swpts.enpracticebe.dto.request.RecordRequest;
-import com.swpts.enpracticebe.dto.response.ImportResponse;
+import com.swpts.enpracticebe.dto.request.vocabulary.ImportRequest;
+import com.swpts.enpracticebe.dto.request.vocabulary.ListRecordRequest;
+import com.swpts.enpracticebe.dto.request.vocabulary.RecordRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
-import com.swpts.enpracticebe.dto.response.StatsResponse;
-import com.swpts.enpracticebe.dto.response.VocabularyRecordResponse;
+import com.swpts.enpracticebe.dto.response.vocabulary.*;
 import com.swpts.enpracticebe.entity.ReviewSession;
 import com.swpts.enpracticebe.entity.VocabularyRecord;
 import com.swpts.enpracticebe.mapper.VocabularyRecordMapper;
@@ -18,6 +12,7 @@ import com.swpts.enpracticebe.repository.ReviewSessionRepository;
 import com.swpts.enpracticebe.repository.VocabularyRecordRepository;
 import com.swpts.enpracticebe.service.RecordService;
 import com.swpts.enpracticebe.util.AuthUtil;
+import com.swpts.enpracticebe.util.DateUtil;
 import com.swpts.enpracticebe.util.JsonUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -26,7 +21,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
-import java.time.*;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -107,7 +105,7 @@ public class RecordServiceImpl implements RecordService {
                     .alternatives(dto.getAlternatives() != null ? dto.getAlternatives() : new ArrayList<>())
                     .synonyms(dto.getSynonyms() != null ? dto.getSynonyms() : new ArrayList<>())
                     .isCorrect(dto.getIsCorrect())
-                    .testedAt(parseTimestamp(dto.getTimestamp()))
+                    .testedAt(DateUtil.parseTimestamp(dto.getTimestamp()))
                     .build();
             recordRepository.save(record);
             importedRecords++;
@@ -123,7 +121,7 @@ public class RecordServiceImpl implements RecordService {
                     .incorrect(dto.getIncorrect())
                     .accuracy(dto.getAccuracy())
                     .words(dto.getWords() != null ? dto.getWords() : new ArrayList<>())
-                    .reviewedAt(parseTimestamp(dto.getTimestamp()))
+                    .reviewedAt(DateUtil.parseTimestamp(dto.getTimestamp()))
                     .build();
             reviewSessionRepository.save(session);
             importedSessions++;
@@ -138,7 +136,7 @@ public class RecordServiceImpl implements RecordService {
     @Override
     public StatsResponse getStats(String period) {
         UUID userId = authUtil.getUserId();
-        Instant since = getStartOfPeriod(period);
+        Instant since = DateUtil.getStartOfPeriod(period);
 
         long total = recordRepository.countByUserIdAndTestedAtAfter(userId, since);
         long correct = recordRepository.countCorrectByUserIdAndTestedAtAfter(userId, since);
@@ -280,9 +278,9 @@ public class RecordServiceImpl implements RecordService {
         List<Object[]> rawWords;
 
         switch (filter) {
-            case "today" -> rawWords = recordRepository.findUniqueWordsSince(userId, getStartOfToday());
-            case "week" -> rawWords = recordRepository.findUniqueWordsSince(userId, getStartOfWeek());
-            case "month" -> rawWords = recordRepository.findUniqueWordsSince(userId, getStartOfMonth());
+            case "today" -> rawWords = recordRepository.findUniqueWordsSince(userId, DateUtil.getStartOfToday());
+            case "week" -> rawWords = recordRepository.findUniqueWordsSince(userId, DateUtil.getStartOfWeek());
+            case "month" -> rawWords = recordRepository.findUniqueWordsSince(userId, DateUtil.getStartOfMonth());
             case "wrong" -> rawWords = recordRepository.findUniqueWrongWords(userId);
             default -> rawWords = recordRepository.findAllUniqueWords(userId);
         }
@@ -310,51 +308,11 @@ public class RecordServiceImpl implements RecordService {
     public ReviewCountsDto getReviewCounts() {
         UUID userId = authUtil.getUserId();
         return ReviewCountsDto.builder()
-                .today(recordRepository.countUniqueWordsSince(userId, getStartOfToday()))
-                .week(recordRepository.countUniqueWordsSince(userId, getStartOfWeek()))
-                .month(recordRepository.countUniqueWordsSince(userId, getStartOfMonth()))
+                .today(recordRepository.countUniqueWordsSince(userId, DateUtil.getStartOfToday()))
+                .week(recordRepository.countUniqueWordsSince(userId, DateUtil.getStartOfWeek()))
+                .month(recordRepository.countUniqueWordsSince(userId, DateUtil.getStartOfMonth()))
                 .wrong(recordRepository.countUniqueWrongWords(userId))
                 .all(recordRepository.countAllUniqueWords(userId))
                 .build();
-    }
-
-    // ---- Helper methods ----
-
-    private Instant getStartOfPeriod(String period) {
-        return switch (period) {
-            case "day" -> getStartOfToday();
-            case "week" -> getStartOfWeek();
-            case "month" -> getStartOfMonth();
-            default -> throw new IllegalArgumentException("Invalid period: " + period);
-        };
-    }
-
-    private Instant getStartOfToday() {
-        return LocalDate.now(ZoneId.of("UTC")).atStartOfDay(ZoneId.of("UTC")).toInstant();
-    }
-
-    private Instant getStartOfWeek() {
-        return LocalDate.now(ZoneId.of("UTC"))
-                .with(DayOfWeek.MONDAY)
-                .atStartOfDay(ZoneId.of("UTC"))
-                .toInstant();
-    }
-
-    private Instant getStartOfMonth() {
-        return LocalDate.now(ZoneId.of("UTC"))
-                .withDayOfMonth(1)
-                .atStartOfDay(ZoneId.of("UTC"))
-                .toInstant();
-    }
-
-    private Instant parseTimestamp(String timestamp) {
-        if (timestamp == null || timestamp.isBlank()) {
-            return Instant.now();
-        }
-        try {
-            return Instant.parse(timestamp);
-        } catch (Exception e) {
-            return Instant.now();
-        }
     }
 }

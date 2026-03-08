@@ -1,8 +1,10 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.IeltsTestFilterRequest;
-import com.swpts.enpracticebe.dto.request.SubmitTestRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.listening.IeltsTestFilterRequest;
+import com.swpts.enpracticebe.dto.request.listening.SubmitTestRequest;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.listening.*;
 import com.swpts.enpracticebe.service.IeltsTestService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

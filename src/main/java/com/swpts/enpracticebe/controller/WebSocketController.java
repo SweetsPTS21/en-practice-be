@@ -1,12 +1,12 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.ChatMessageRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingConversationMessage;
-import com.swpts.enpracticebe.dto.request.SubmitTurnRequest;
-import com.swpts.enpracticebe.dto.response.AiAskResponse;
-import com.swpts.enpracticebe.dto.response.AiChatResponse;
-import com.swpts.enpracticebe.dto.response.NextQuestionResponse;
-import com.swpts.enpracticebe.dto.response.SpeakingConversationWsResponse;
+import com.swpts.enpracticebe.dto.request.ai.ChatMessageRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingConversationMessage;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
+import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiChatResponse;
+import com.swpts.enpracticebe.dto.response.speaking.NextQuestionResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingConversationWsResponse;
 import com.swpts.enpracticebe.service.ConversationSpeakingService;
 import com.swpts.enpracticebe.service.OpenClawService;
 import com.swpts.enpracticebe.service.TextToSpeechService;

@@ -1,10 +1,10 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.request.CreateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.UpdateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
-import com.swpts.enpracticebe.dto.response.AdminWritingTaskResponse;
+import com.swpts.enpracticebe.dto.request.admin.CreateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminWritingTaskResponse;
 
 import java.util.UUID;
 

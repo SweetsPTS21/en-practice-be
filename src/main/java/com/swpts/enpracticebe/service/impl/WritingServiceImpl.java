@@ -1,46 +1,42 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.SubmitWritingRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
+import com.swpts.enpracticebe.dto.request.writing.SubmitWritingRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
-import com.swpts.enpracticebe.dto.response.WritingSubmissionResponse;
-import com.swpts.enpracticebe.dto.response.WritingTaskListResponse;
-import com.swpts.enpracticebe.dto.response.WritingTaskResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingSubmissionResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskListResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskResponse;
 import com.swpts.enpracticebe.entity.WritingSubmission;
 import com.swpts.enpracticebe.entity.WritingTask;
+import com.swpts.enpracticebe.mapper.WritingMapper;
 import com.swpts.enpracticebe.repository.WritingSubmissionRepository;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
 import com.swpts.enpracticebe.service.WritingService;
+import com.swpts.enpracticebe.util.AuthUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class WritingServiceImpl implements WritingService {
 
     private final WritingTaskRepository taskRepository;
     private final WritingSubmissionRepository submissionRepository;
     private final WritingGradingService gradingService;
-
-    public WritingServiceImpl(WritingTaskRepository taskRepository,
-            WritingSubmissionRepository submissionRepository,
-            WritingGradingService gradingService) {
-        this.taskRepository = taskRepository;
-        this.submissionRepository = submissionRepository;
-        this.gradingService = gradingService;
-    }
+    private final WritingMapper writingMapper;
+    private final AuthUtil authUtil;
 
     // ─── List Writing Tasks (published only) ────────────────────────────────────
 
@@ -70,7 +66,7 @@ public class WritingServiceImpl implements WritingService {
         }
 
         List<WritingTaskListResponse> items = page.getContent().stream()
-                .map(this::toListResponse)
+                .map(writingMapper::toListResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<WritingTaskListResponse>builder()
@@ -88,7 +84,7 @@ public class WritingServiceImpl implements WritingService {
     public WritingTaskResponse getWritingTaskDetail(UUID taskId) {
         WritingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Writing task not found: " + taskId));
-        return toTaskResponse(task);
+        return writingMapper.toTaskResponse(task);
     }
 
     // ─── Submit Essay ───────────────────────────────────────────────────────────
@@ -96,7 +92,7 @@ public class WritingServiceImpl implements WritingService {
     @Override
     @Transactional
     public WritingSubmissionResponse submitEssay(UUID taskId, SubmitWritingRequest request) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         WritingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Writing task not found: " + taskId));
@@ -123,14 +119,14 @@ public class WritingServiceImpl implements WritingService {
             }
         });
 
-        return toSubmissionResponse(submission, task);
+        return writingMapper.toSubmissionResponse(submission, task);
     }
 
     // ─── Get Submission Detail ──────────────────────────────────────────────────
 
     @Override
     public WritingSubmissionResponse getSubmissionDetail(UUID submissionId) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         WritingSubmission submission = submissionRepository.findById(submissionId)
                 .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
@@ -142,14 +138,14 @@ public class WritingServiceImpl implements WritingService {
         WritingTask task = taskRepository.findById(submission.getTaskId())
                 .orElseThrow(() -> new RuntimeException("Writing task not found: " + submission.getTaskId()));
 
-        return toSubmissionResponse(submission, task);
+        return writingMapper.toSubmissionResponse(submission, task);
     }
 
     // ─── Submission History ─────────────────────────────────────────────────────
 
     @Override
     public PageResponse<WritingSubmissionResponse> getSubmissionHistory(int page, int size) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
         List<WritingSubmission> allSubmissions = submissionRepository.findByUserIdOrderBySubmittedAtDesc(userId);
 
         // Manual pagination
@@ -169,7 +165,7 @@ public class WritingServiceImpl implements WritingService {
         List<WritingSubmissionResponse> items = pageSubmissions.stream()
                 .map(sub -> {
                     WritingTask task = taskMap.get(sub.getTaskId());
-                    return toSubmissionResponse(sub, task);
+                    return writingMapper.toSubmissionResponse(sub, task);
                 })
                 .collect(Collectors.toList());
 
@@ -182,67 +178,9 @@ public class WritingServiceImpl implements WritingService {
                 .build();
     }
 
-    // ─── Private helpers ────────────────────────────────────────────────────────
-
-    private UUID getCurrentUserId() {
-        return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
-
     private int countWords(String text) {
         if (text == null || text.isBlank())
             return 0;
         return text.trim().split("\\s+").length;
-    }
-
-    private WritingTaskListResponse toListResponse(WritingTask task) {
-        return WritingTaskListResponse.builder()
-                .id(task.getId())
-                .taskType(task.getTaskType().name())
-                .title(task.getTitle())
-                .difficulty(task.getDifficulty().name())
-                .timeLimitMinutes(task.getTimeLimitMinutes())
-                .minWords(task.getMinWords())
-                .maxWords(task.getMaxWords())
-                .createdAt(task.getCreatedAt())
-                .build();
-    }
-
-    private WritingTaskResponse toTaskResponse(WritingTask task) {
-        return WritingTaskResponse.builder()
-                .id(task.getId())
-                .taskType(task.getTaskType().name())
-                .title(task.getTitle())
-                .content(task.getContent())
-                .instruction(task.getInstruction())
-                .imageUrls(task.getImageUrls())
-                .difficulty(task.getDifficulty().name())
-                .isPublished(task.getIsPublished())
-                .timeLimitMinutes(task.getTimeLimitMinutes())
-                .minWords(task.getMinWords())
-                .maxWords(task.getMaxWords())
-                .createdAt(task.getCreatedAt())
-                .updatedAt(task.getUpdatedAt())
-                .build();
-    }
-
-    private WritingSubmissionResponse toSubmissionResponse(WritingSubmission submission, WritingTask task) {
-        return WritingSubmissionResponse.builder()
-                .id(submission.getId())
-                .taskId(submission.getTaskId())
-                .taskTitle(task != null ? task.getTitle() : "Unknown")
-                .taskType(task != null ? task.getTaskType().name() : null)
-                .essayContent(submission.getEssayContent())
-                .wordCount(submission.getWordCount())
-                .timeSpentSeconds(submission.getTimeSpentSeconds())
-                .status(submission.getStatus().name())
-                .taskResponseScore(submission.getTaskResponseScore())
-                .coherenceScore(submission.getCoherenceScore())
-                .lexicalResourceScore(submission.getLexicalResourceScore())
-                .grammarScore(submission.getGrammarScore())
-                .overallBandScore(submission.getOverallBandScore())
-                .aiFeedback(submission.getAiFeedback())
-                .submittedAt(submission.getSubmittedAt())
-                .gradedAt(submission.getGradedAt())
-                .build();
     }
 }

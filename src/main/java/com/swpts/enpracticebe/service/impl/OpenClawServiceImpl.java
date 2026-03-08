@@ -1,9 +1,9 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.OpenClawRequest;
-import com.swpts.enpracticebe.dto.response.AiAskResponse;
-import com.swpts.enpracticebe.dto.response.AiExplainResponse;
-import com.swpts.enpracticebe.dto.response.OpenClawResponse;
+import com.swpts.enpracticebe.dto.request.ai.OpenClawRequest;
+import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
+import com.swpts.enpracticebe.dto.response.ai.OpenClawResponse;
 import com.swpts.enpracticebe.service.OpenClawService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +22,9 @@ public class OpenClawServiceImpl implements OpenClawService {
     private final AuthUtil authUtil;
 
     public OpenClawServiceImpl(@Value("${openclaw.gateway.url:http://127.0.0.1:18789}") String gatewayUrl,
-            @Value("${openclaw.gateway.token:abc}") String gatewayToken,
-            WebClient.Builder builder,
-            AuthUtil authUtil) {
+                               @Value("${openclaw.gateway.token:abc}") String gatewayToken,
+                               WebClient.Builder builder,
+                               AuthUtil authUtil) {
         this.authUtil = authUtil;
         this.webClient = builder
                 .baseUrl(gatewayUrl)

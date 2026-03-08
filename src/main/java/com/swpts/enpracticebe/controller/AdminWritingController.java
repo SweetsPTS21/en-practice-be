@@ -1,11 +1,11 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.CreateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.UpdateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
-import com.swpts.enpracticebe.dto.response.AdminWritingTaskResponse;
+import com.swpts.enpracticebe.dto.request.admin.CreateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminWritingTaskResponse;
 import com.swpts.enpracticebe.service.AdminWritingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

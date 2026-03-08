@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.mapper;
 
-import com.swpts.enpracticebe.dto.response.VocabularyRecordResponse;
+import com.swpts.enpracticebe.dto.response.vocabulary.VocabularyRecordResponse;
 import com.swpts.enpracticebe.entity.VocabularyRecord;
 import org.springframework.stereotype.Component;
 

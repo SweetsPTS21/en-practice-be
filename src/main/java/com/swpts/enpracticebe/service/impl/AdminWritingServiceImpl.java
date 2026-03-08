@@ -1,13 +1,15 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.CreateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.UpdateWritingTaskRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
-import com.swpts.enpracticebe.dto.response.AdminWritingTaskResponse;
+import com.swpts.enpracticebe.dto.request.admin.CreateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateWritingTaskRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminWritingTaskResponse;
 import com.swpts.enpracticebe.entity.WritingTask;
+import com.swpts.enpracticebe.mapper.WritingMapper;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
 import com.swpts.enpracticebe.service.AdminWritingService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -22,13 +24,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AdminWritingServiceImpl implements AdminWritingService {
 
     private final WritingTaskRepository taskRepository;
-
-    public AdminWritingServiceImpl(WritingTaskRepository taskRepository) {
-        this.taskRepository = taskRepository;
-    }
+    private final WritingMapper writingMapper;
 
     // ─── List Tasks ─────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ public class AdminWritingServiceImpl implements AdminWritingService {
         Page<WritingTask> page = findTasks(hasTaskType, hasDifficulty, hasPublished, request, pageable);
 
         List<AdminWritingTaskResponse> items = page.getContent().stream()
-                .map(this::toAdminResponse)
+                .map(writingMapper::toAdminResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<AdminWritingTaskResponse>builder()
@@ -64,7 +64,7 @@ public class AdminWritingServiceImpl implements AdminWritingService {
     public AdminWritingTaskResponse getTaskDetail(UUID taskId) {
         WritingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Writing task not found: " + taskId));
-        return toAdminResponse(task);
+        return writingMapper.toAdminResponse(task);
     }
 
     // ─── Create Task ────────────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ public class AdminWritingServiceImpl implements AdminWritingService {
                 .maxWords(request.getMaxWords())
                 .build();
         task = taskRepository.save(task);
-        return toAdminResponse(task);
+        return writingMapper.toAdminResponse(task);
     }
 
     // ─── Update Task ────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ public class AdminWritingServiceImpl implements AdminWritingService {
         task.setMaxWords(request.getMaxWords());
         task = taskRepository.save(task);
 
-        return toAdminResponse(task);
+        return writingMapper.toAdminResponse(task);
     }
 
     // ─── Delete Task ────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ public class AdminWritingServiceImpl implements AdminWritingService {
     // ─── Private helpers ────────────────────────────────────────────────────────
 
     private Page<WritingTask> findTasks(boolean hasTaskType, boolean hasDifficulty, boolean hasPublished,
-            WritingTaskFilterRequest request, PageRequest pageable) {
+                                        WritingTaskFilterRequest request, PageRequest pageable) {
         WritingTask.TaskType taskType = hasTaskType ? WritingTask.TaskType.valueOf(request.getTaskType()) : null;
         WritingTask.Difficulty difficulty = hasDifficulty ? WritingTask.Difficulty.valueOf(request.getDifficulty())
                 : null;
@@ -180,24 +180,5 @@ public class AdminWritingServiceImpl implements AdminWritingService {
         } else {
             return taskRepository.findAll(pageable);
         }
-    }
-
-    private AdminWritingTaskResponse toAdminResponse(WritingTask task) {
-        return AdminWritingTaskResponse.builder()
-                .id(task.getId())
-                .taskType(task.getTaskType().name())
-                .title(task.getTitle())
-                .content(task.getContent())
-                .instruction(task.getInstruction())
-                .imageUrls(task.getImageUrls())
-                .aiGradingPrompt(task.getAiGradingPrompt())
-                .difficulty(task.getDifficulty().name())
-                .isPublished(task.getIsPublished())
-                .timeLimitMinutes(task.getTimeLimitMinutes())
-                .minWords(task.getMinWords())
-                .maxWords(task.getMaxWords())
-                .createdAt(task.getCreatedAt())
-                .updatedAt(task.getUpdatedAt())
-                .build();
     }
 }

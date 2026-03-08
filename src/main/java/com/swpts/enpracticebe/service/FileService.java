@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.response.PresignUrlResponse;
+import com.swpts.enpracticebe.dto.response.auth.PresignUrlResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface FileService {
