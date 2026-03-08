@@ -19,6 +19,7 @@ public class SpeakingConversationWsResponse {
     private Integer turnNumber;
     private String aiQuestion;
     private String audioBase64;
+    private String turnType; // "QUESTION" or "HINT"
     private boolean lastTurn;
     private String errorMessage;
 

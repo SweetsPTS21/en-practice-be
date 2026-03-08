@@ -39,6 +39,13 @@ public class SpeakingConversationTurn {
     @Column(name = "time_spent_seconds")
     private Integer timeSpentSeconds;
 
+    @Column(name = "turn_type")
+    @Builder.Default
+    private String turnType = "QUESTION"; // QUESTION or HINT
+
+    @Column(name = "follow_up_index")
+    private Integer followUpIndex; // which follow-up this turn addresses
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 

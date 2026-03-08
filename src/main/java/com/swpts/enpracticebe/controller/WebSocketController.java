@@ -87,6 +87,7 @@ public class WebSocketController {
                     .conversationId(result.getConversationId())
                     .turnNumber(result.getTurnNumber())
                     .aiQuestion(result.getAiQuestion())
+                    .turnType(result.getTurnType())
                     .lastTurn(result.isLastTurn())
                     .timestamp(Instant.now())
                     .build();

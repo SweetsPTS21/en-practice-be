@@ -11,6 +11,7 @@ public class NextQuestionResponse {
     private UUID conversationId;
     private Integer turnNumber;
     private String aiQuestion;
+    private String turnType; // QUESTION or HINT
     private boolean lastTurn;
     private boolean conversationComplete;
 }

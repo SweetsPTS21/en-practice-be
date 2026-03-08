@@ -50,7 +50,6 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     @Override
     @Transactional
     public NextQuestionResponse startConversation(UUID topicId, UUID userId) {
-
         SpeakingTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Topic not found: " + topicId));
 
@@ -58,7 +57,6 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
             throw new RuntimeException("Topic is not published");
         }
 
-        // Create conversation
         SpeakingConversation conversation = SpeakingConversation.builder()
                 .userId(userId)
                 .topicId(topicId)
@@ -67,25 +65,26 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 .build();
         conversation = conversationRepository.save(conversation);
 
-        // Create first turn with topic's main question
         SpeakingConversationTurn firstTurn = SpeakingConversationTurn.builder()
                 .conversationId(conversation.getId())
                 .turnNumber(1)
                 .aiQuestion(topic.getQuestion())
+                .turnType("QUESTION")
+                .followUpIndex(0)
                 .build();
         turnRepository.save(firstTurn);
 
         conversation.setTotalTurns(1);
         conversationRepository.save(conversation);
 
-        // Determine if this is also the last turn (no follow-ups)
-        int totalExpectedTurns = 1 + (topic.getFollowUpQuestions() != null ? topic.getFollowUpQuestions().size() : 0);
+        int totalExpectedQuestions = 1 + (topic.getFollowUpQuestions() != null ? topic.getFollowUpQuestions().size() : 0);
 
         return NextQuestionResponse.builder()
                 .conversationId(conversation.getId())
                 .turnNumber(1)
                 .aiQuestion(topic.getQuestion())
-                .lastTurn(totalExpectedTurns <= 1)
+                .turnType("QUESTION")
+                .lastTurn(totalExpectedQuestions <= 1)
                 .conversationComplete(false)
                 .build();
     }
@@ -93,7 +92,6 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     @Override
     @Transactional
     public NextQuestionResponse submitTurn(UUID conversationId, SubmitTurnRequest request, UUID userId) {
-
         SpeakingConversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
                 .orElseThrow(() -> new RuntimeException("Conversation not found: " + conversationId));
 
@@ -104,11 +102,10 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         SpeakingTopic topic = topicRepository.findById(conversation.getTopicId())
                 .orElseThrow(() -> new RuntimeException("Topic not found"));
 
-        // Get all existing turns
         List<SpeakingConversationTurn> existingTurns =
                 turnRepository.findByConversationIdOrderByTurnNumberAsc(conversationId);
 
-        // Find the current (latest unanswered) turn and save user's response
+        // Find the current unanswered turn and save user's response
         SpeakingConversationTurn currentTurn = existingTurns.stream()
                 .filter(t -> t.getUserTranscript() == null || t.getUserTranscript().isBlank())
                 .findFirst()
@@ -119,24 +116,34 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         currentTurn.setTimeSpentSeconds(request.getTimeSpentSeconds());
         turnRepository.save(currentTurn);
 
-        // Determine total expected turns (1 main + follow-ups)
+        // Progress tracking: count only answered QUESTION turns
         List<String> followUps = topic.getFollowUpQuestions();
-        int totalExpectedTurns = 1 + (followUps != null ? followUps.size() : 0);
-        int currentTurnNumber = currentTurn.getTurnNumber();
+        int totalExpectedQuestions = 1 + (followUps != null ? followUps.size() : 0);
 
-        // If all turns answered -> complete conversation
-        if (currentTurnNumber >= totalExpectedTurns) {
+        long answeredQuestionCount = existingTurns.stream()
+                .filter(t -> "QUESTION".equals(t.getTurnType())
+                        && t.getUserTranscript() != null
+                        && !t.getUserTranscript().isBlank())
+                .count();
+
+        // Current follow-up index from the last QUESTION turn
+        int currentFollowUpIndex = existingTurns.stream()
+                .filter(t -> "QUESTION".equals(t.getTurnType()))
+                .mapToInt(t -> t.getFollowUpIndex() != null ? t.getFollowUpIndex() : 0)
+                .max()
+                .orElse(0);
+
+        // All questions answered -> complete conversation
+        if (answeredQuestionCount >= totalExpectedQuestions) {
             conversation.setStatus(SpeakingConversation.ConversationStatus.COMPLETED);
             conversation.setCompletedAt(Instant.now());
 
-            // Calculate total time
             int totalTime = existingTurns.stream()
                     .mapToInt(t -> t.getTimeSpentSeconds() != null ? t.getTimeSpentSeconds() : 0)
                     .sum();
             conversation.setTimeSpentSeconds(totalTime);
             conversationRepository.save(conversation);
 
-            // Trigger async grading after commit
             final UUID convId = conversation.getId();
             final UUID uid = userId;
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -148,33 +155,50 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
             return NextQuestionResponse.builder()
                     .conversationId(conversationId)
-                    .turnNumber(currentTurnNumber)
+                    .turnNumber(currentTurn.getTurnNumber())
                     .aiQuestion(null)
+                    .turnType("QUESTION")
                     .lastTurn(true)
                     .conversationComplete(true)
                     .build();
         }
 
-        // Generate next question using AI
-        String nextQuestion = generateNextQuestion(topic, existingTurns, currentTurnNumber, followUps, userId);
+        // Determine next follow-up question
+        String nextFollowUp = null;
+        int nextFollowUpIndex = currentFollowUpIndex + 1;
+        if (followUps != null && nextFollowUpIndex > 0 && nextFollowUpIndex <= followUps.size()) {
+            nextFollowUp = followUps.get(nextFollowUpIndex - 1);
+        }
 
-        int nextTurnNumber = currentTurnNumber + 1;
+        // AI decides: HINT (user struggling) or QUESTION (user answered well -> next follow-up)
+        AdaptiveResult aiResult = generateAdaptiveResponse(
+                topic, existingTurns, currentTurn, nextFollowUp, currentFollowUpIndex, userId);
+
+        int nextTurnNumber = currentTurn.getTurnNumber() + 1;
+
         SpeakingConversationTurn nextTurn = SpeakingConversationTurn.builder()
                 .conversationId(conversationId)
                 .turnNumber(nextTurnNumber)
-                .aiQuestion(nextQuestion)
+                .aiQuestion(aiResult.response)
+                .turnType(aiResult.turnType)
+                .followUpIndex("HINT".equals(aiResult.turnType) ? currentFollowUpIndex : nextFollowUpIndex)
                 .build();
         turnRepository.save(nextTurn);
 
         conversation.setTotalTurns(nextTurnNumber);
         conversationRepository.save(conversation);
 
-        boolean isLastTurn = nextTurnNumber >= totalExpectedTurns;
+        // isLastTurn only if this was a QUESTION and it covers the final follow-up
+        boolean isLastTurn = false;
+        if ("QUESTION".equals(aiResult.turnType)) {
+            isLastTurn = (nextFollowUpIndex + 1) >= totalExpectedQuestions;
+        }
 
         return NextQuestionResponse.builder()
                 .conversationId(conversationId)
                 .turnNumber(nextTurnNumber)
-                .aiQuestion(nextQuestion)
+                .aiQuestion(aiResult.response)
+                .turnType(aiResult.turnType)
                 .lastTurn(isLastTurn)
                 .conversationComplete(false)
                 .build();
@@ -215,19 +239,26 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
     // --- Private helpers ---
 
-    private String generateNextQuestion(SpeakingTopic topic, List<SpeakingConversationTurn> existingTurns,
-                                        int currentTurnNumber, List<String> followUps, UUID userId) {
-        // Build conversation history
+    private record AdaptiveResult(String turnType, String response) {}
+
+    private AdaptiveResult generateAdaptiveResponse(SpeakingTopic topic,
+                                                     List<SpeakingConversationTurn> existingTurns,
+                                                     SpeakingConversationTurn currentTurn,
+                                                     String nextFollowUp,
+                                                     int currentFollowUpIndex,
+                                                     UUID userId) {
         StringBuilder history = new StringBuilder();
         for (SpeakingConversationTurn turn : existingTurns) {
-            history.append("Examiner: ").append(turn.getAiQuestion()).append("\n");
+            String label = "HINT".equals(turn.getTurnType()) ? "Examiner (hint)" : "Examiner";
+            history.append(label).append(": ").append(turn.getAiQuestion()).append("\n");
             if (turn.getUserTranscript() != null) {
                 history.append("Student: ").append(turn.getUserTranscript()).append("\n");
             }
         }
 
-        // The follow-up question to base on
-        String suggestedFollowUp = followUps.get(currentTurnNumber - 1); // 0-indexed from follow-ups
+        String nextFollowUpSection = nextFollowUp != null
+                ? "**Next follow-up question to move to (if student is ready):** " + nextFollowUp
+                : "**No more follow-up questions remaining** — if the student answered well, this is the final turn.";
 
         String prompt = String.format("""
                 You are a friendly, professional IELTS Speaking examiner conducting a live interview.
@@ -238,44 +269,80 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 **Conversation so far:**
                 %s
                 
-                **Suggested next question:** %s
+                **Student's latest answer:** %s
                 
-                Your task:
-                1. First, respond naturally and briefly to what the student just said. Acknowledge their answer \
-                with a short, genuine comment (1-2 sentences max). You can be slightly witty or add a touch of \
-                light humor to keep the mood relaxed, but stay professional.
-                2. Then, smoothly transition into the next question based on the suggested follow-up above. \
-                Adapt the question naturally so it flows from your comment and the conversation context.
+                %s
                 
-                Important rules:
-                - Your response should sound like natural spoken English, as if you're having a real conversation.
-                - Do NOT use any prefixes like "Examiner:" or "Question:".
-                - Do NOT use markdown formatting or bullet points.
-                - Keep the total response concise (3-4 sentences max: brief comment + question).
-                - The question should cover the same topic area as the suggested follow-up.
+                Your task: Analyze the student's latest answer and decide ONE of these actions:
                 
-                Respond with ONLY the examiner's spoken dialogue, nothing else.
+                **Action "HINT"** — Choose this if:
+                - The student's answer is very short (only a few words), vague, or off-topic
+                - The student seems to be struggling, hesitating, or says phrases like "I don't know", \
+                "I'm not sure", "um...", or gives a very generic answer
+                - The student explicitly asks for help or seems confused
+                
+                If you choose HINT:
+                - Encourage the student warmly and naturally (e.g., "That's okay, no worries!", "Good start!")
+                - Give them a helpful hint or suggestion to guide their thinking \
+                (e.g., "Think about a time when...", "You could talk about...", "Maybe consider...")
+                - End your response by naturally asking something like: \
+                "Would you like me to give you another hint, or are you ready to give it a try?"
+                - Keep it friendly, encouraging, and slightly humorous
+                
+                **Action "FOLLOWUP"** — Choose this if:
+                - The student gave a reasonable, substantive answer (even if imperfect)
+                - The student indicates they're ready to move on or ready to answer
+                - The student responded to a hint by giving a proper answer
+                
+                If you choose FOLLOWUP:
+                - Briefly comment on their answer naturally (1-2 sentences, can be witty/humorous)
+                - Then smoothly transition to the next follow-up question
+                - Adapt the question naturally so it flows from the conversation
+                
+                IMPORTANT: Respond with EXACTLY this JSON format, nothing else:
+                {"action": "HINT" or "FOLLOWUP", "response": "your spoken response here"}
+                
+                Rules for the "response" field:
+                - Natural spoken English, as if having a real conversation
+                - No prefixes like "Examiner:" or "Question:"
+                - No markdown formatting
+                - Concise (3-5 sentences max)
                 """,
                 topic.getQuestion(),
                 topic.getPart().name(),
                 history.toString(),
-                suggestedFollowUp);
+                currentTurn.getUserTranscript(),
+                nextFollowUpSection);
 
         try {
             AiAskResponse aiResponse = openClawService.askAi(prompt, userId);
-            String nextQ = aiResponse.getAnswer().trim();
-            // Clean up if AI adds quotes or prefixes
-            if (nextQ.startsWith("\"") && nextQ.endsWith("\"")) {
-                nextQ = nextQ.substring(1, nextQ.length() - 1);
+            String raw = aiResponse.getAnswer().trim();
+
+            // Parse JSON response
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(raw);
+                String action = json.has("action") ? json.get("action").asText().toUpperCase() : "FOLLOWUP";
+                String response = json.has("response") ? json.get("response").asText() : raw;
+
+                if (!"HINT".equals(action) && !"FOLLOWUP".equals(action)) {
+                    action = "FOLLOWUP";
+                }
+                String turnType = "HINT".equals(action) ? "HINT" : "QUESTION";
+                return new AdaptiveResult(turnType, response);
+            } catch (Exception parseEx) {
+                log.warn("Failed to parse AI JSON response, treating as FOLLOWUP: {}", parseEx.getMessage());
+                String cleaned = raw;
+                if (cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
+                    cleaned = cleaned.substring(1, cleaned.length() - 1);
+                }
+                return new AdaptiveResult("QUESTION",
+                        cleaned.isEmpty() ? (nextFollowUp != null ? nextFollowUp : "Could you tell me more?") : cleaned);
             }
-            // Remove any "Examiner:" prefix the AI might add
-            if (nextQ.toLowerCase().startsWith("examiner:")) {
-                nextQ = nextQ.substring(9).trim();
-            }
-            return nextQ.isEmpty() ? suggestedFollowUp : nextQ;
         } catch (Exception e) {
-            log.warn("AI next question generation failed, using suggested follow-up: {}", e.getMessage());
-            return suggestedFollowUp;
+            log.warn("AI adaptive response failed, using fallback: {}", e.getMessage());
+            return new AdaptiveResult("QUESTION",
+                    nextFollowUp != null ? nextFollowUp : "Could you elaborate on that?");
         }
     }
 
@@ -290,6 +357,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                             .aiQuestion(t.getAiQuestion())
                             .userTranscript(t.getUserTranscript())
                             .audioUrl(t.getAudioUrl())
+                            .turnType(t.getTurnType())
                             .timeSpentSeconds(t.getTimeSpentSeconds())
                             .createdAt(t.getCreatedAt())
                             .build())
@@ -316,5 +384,4 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 .turns(turnResponses)
                 .build();
     }
-
 }
