@@ -1,9 +1,11 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.SubmitSpeakingRequest;
-import com.swpts.enpracticebe.dto.request.SubmitTurnRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingTopicFilterRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.speaking.*;
 import com.swpts.enpracticebe.service.ConversationSpeakingService;
 import com.swpts.enpracticebe.service.FileService;
 import com.swpts.enpracticebe.service.SpeakingService;

@@ -1,8 +1,12 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.SubmitWritingRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.writing.SubmitWritingRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
+import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingSubmissionResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskListResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskResponse;
 import com.swpts.enpracticebe.service.WritingService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

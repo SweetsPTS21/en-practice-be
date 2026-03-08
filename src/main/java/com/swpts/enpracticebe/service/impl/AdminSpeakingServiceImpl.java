@@ -1,13 +1,15 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.CreateSpeakingTopicRequest;
-import com.swpts.enpracticebe.dto.request.UpdateSpeakingTopicRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingTopicFilterRequest;
-import com.swpts.enpracticebe.dto.response.AdminSpeakingTopicResponse;
+import com.swpts.enpracticebe.dto.request.admin.CreateSpeakingTopicRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateSpeakingTopicRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminSpeakingTopicResponse;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.AdminSpeakingService;
+import lombok.AllArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -22,13 +24,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class AdminSpeakingServiceImpl implements AdminSpeakingService {
 
     private final SpeakingTopicRepository topicRepository;
-
-    public AdminSpeakingServiceImpl(SpeakingTopicRepository topicRepository) {
-        this.topicRepository = topicRepository;
-    }
+    private final SpeakingMapper speakingMapper;
 
     @Override
     @Cacheable(value = "adminSpeakingTopicList",
@@ -44,7 +44,7 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
         Page<SpeakingTopic> page = findTopics(hasPart, hasDifficulty, hasPublished, request, pageable);
 
         List<AdminSpeakingTopicResponse> items = page.getContent().stream()
-                .map(this::toAdminResponse)
+                .map(speakingMapper::toAdminResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<AdminSpeakingTopicResponse>builder()
@@ -61,7 +61,7 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
     public AdminSpeakingTopicResponse getTopicDetail(UUID topicId) {
         SpeakingTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
-        return toAdminResponse(topic);
+        return speakingMapper.toAdminResponse(topic);
     }
 
     @Override
@@ -81,7 +81,7 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
                 .isPublished(request.getIsPublished())
                 .build();
         topic = topicRepository.save(topic);
-        return toAdminResponse(topic);
+        return speakingMapper.toAdminResponse(topic);
     }
 
     @Override
@@ -104,7 +104,7 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
         topic.setIsPublished(request.getIsPublished());
         topic = topicRepository.save(topic);
 
-        return toAdminResponse(topic);
+        return speakingMapper.toAdminResponse(topic);
     }
 
     @Override
@@ -138,7 +138,7 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
     // ─── Private helpers ────────────────────────────────────────────────────────
 
     private Page<SpeakingTopic> findTopics(boolean hasPart, boolean hasDifficulty, boolean hasPublished,
-            SpeakingTopicFilterRequest request, PageRequest pageable) {
+                                           SpeakingTopicFilterRequest request, PageRequest pageable) {
         SpeakingTopic.Part part = hasPart ? SpeakingTopic.Part.valueOf(request.getPart()) : null;
         SpeakingTopic.Difficulty difficulty = hasDifficulty
                 ? SpeakingTopic.Difficulty.valueOf(request.getDifficulty()) : null;
@@ -160,20 +160,5 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
         } else {
             return topicRepository.findAll(pageable);
         }
-    }
-
-    private AdminSpeakingTopicResponse toAdminResponse(SpeakingTopic topic) {
-        return AdminSpeakingTopicResponse.builder()
-                .id(topic.getId())
-                .part(topic.getPart().name())
-                .question(topic.getQuestion())
-                .cueCard(topic.getCueCard())
-                .followUpQuestions(topic.getFollowUpQuestions())
-                .aiGradingPrompt(topic.getAiGradingPrompt())
-                .difficulty(topic.getDifficulty().name())
-                .isPublished(topic.getIsPublished())
-                .createdAt(topic.getCreatedAt())
-                .updatedAt(topic.getUpdatedAt())
-                .build();
     }
 }

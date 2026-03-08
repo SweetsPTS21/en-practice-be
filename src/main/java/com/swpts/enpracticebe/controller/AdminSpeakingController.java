@@ -1,11 +1,11 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.request.CreateSpeakingTopicRequest;
-import com.swpts.enpracticebe.dto.request.UpdateSpeakingTopicRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingTopicFilterRequest;
-import com.swpts.enpracticebe.dto.response.AdminSpeakingTopicResponse;
+import com.swpts.enpracticebe.dto.request.admin.CreateSpeakingTopicRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateSpeakingTopicRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminSpeakingTopicResponse;
 import com.swpts.enpracticebe.service.AdminSpeakingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

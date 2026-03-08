@@ -1,11 +1,11 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.request.SubmitWritingRequest;
-import com.swpts.enpracticebe.dto.request.WritingTaskFilterRequest;
+import com.swpts.enpracticebe.dto.request.writing.SubmitWritingRequest;
+import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
-import com.swpts.enpracticebe.dto.response.WritingSubmissionResponse;
-import com.swpts.enpracticebe.dto.response.WritingTaskListResponse;
-import com.swpts.enpracticebe.dto.response.WritingTaskResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingSubmissionResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskListResponse;
+import com.swpts.enpracticebe.dto.response.writing.WritingTaskResponse;
 
 import java.util.UUID;
 

@@ -1,10 +1,10 @@
 package com.swpts.enpracticebe.controller;
 
-import com.swpts.enpracticebe.dto.UserDto;
-import com.swpts.enpracticebe.dto.request.FirebaseTokenRequest;
-import com.swpts.enpracticebe.dto.request.LoginRequest;
-import com.swpts.enpracticebe.dto.request.RegisterRequest;
-import com.swpts.enpracticebe.dto.response.AuthResponse;
+import com.swpts.enpracticebe.dto.request.auth.FirebaseTokenRequest;
+import com.swpts.enpracticebe.dto.request.auth.LoginRequest;
+import com.swpts.enpracticebe.dto.request.auth.RegisterRequest;
+import com.swpts.enpracticebe.dto.response.auth.AuthResponse;
+import com.swpts.enpracticebe.dto.response.auth.UserDto;
 import com.swpts.enpracticebe.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;

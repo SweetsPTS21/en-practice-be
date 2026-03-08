@@ -1,16 +1,21 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.SubmitTurnRequest;
-import com.swpts.enpracticebe.dto.response.*;
-import com.swpts.enpracticebe.dto.response.AiAskResponse;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.speaking.ConversationResponse;
+import com.swpts.enpracticebe.dto.response.speaking.NextQuestionResponse;
 import com.swpts.enpracticebe.entity.SpeakingConversation;
 import com.swpts.enpracticebe.entity.SpeakingConversationTurn;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingConversationRepository;
 import com.swpts.enpracticebe.repository.SpeakingConversationTurnRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.ConversationSpeakingService;
 import com.swpts.enpracticebe.service.OpenClawService;
+import com.swpts.enpracticebe.util.PromptBuilder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,6 +31,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConversationSpeakingServiceImpl implements ConversationSpeakingService {
 
     private final SpeakingConversationRepository conversationRepository;
@@ -33,19 +39,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     private final SpeakingTopicRepository topicRepository;
     private final OpenClawService openClawService;
     private final ConversationGradingService gradingService;
-
-    public ConversationSpeakingServiceImpl(
-            SpeakingConversationRepository conversationRepository,
-            SpeakingConversationTurnRepository turnRepository,
-            SpeakingTopicRepository topicRepository,
-            OpenClawService openClawService,
-            ConversationGradingService gradingService) {
-        this.conversationRepository = conversationRepository;
-        this.turnRepository = turnRepository;
-        this.topicRepository = topicRepository;
-        this.openClawService = openClawService;
-        this.gradingService = gradingService;
-    }
+    private final SpeakingMapper speakingMapper;
 
     @Override
     @Transactional
@@ -213,7 +207,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         List<SpeakingConversationTurn> turns =
                 turnRepository.findByConversationIdOrderByTurnNumberAsc(conversationId);
 
-        return toConversationResponse(conversation, topic, turns);
+        return speakingMapper.toConversationResponse(conversation, topic, turns);
     }
 
     @Override
@@ -224,7 +218,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         List<ConversationResponse> items = convPage.getContent().stream()
                 .map(conv -> {
                     SpeakingTopic topic = topicRepository.findById(conv.getTopicId()).orElse(null);
-                    return toConversationResponse(conv, topic, null);
+                    return speakingMapper.toConversationResponse(conv, topic, null);
                 })
                 .collect(Collectors.toList());
 
@@ -239,82 +233,16 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
     // --- Private helpers ---
 
-    private record AdaptiveResult(String turnType, String response) {}
-
     private AdaptiveResult generateAdaptiveResponse(SpeakingTopic topic,
-                                                     List<SpeakingConversationTurn> existingTurns,
-                                                     SpeakingConversationTurn currentTurn,
-                                                     String nextFollowUp,
-                                                     int currentFollowUpIndex,
-                                                     UUID userId) {
-        StringBuilder history = new StringBuilder();
-        for (SpeakingConversationTurn turn : existingTurns) {
-            String label = "HINT".equals(turn.getTurnType()) ? "Examiner (hint)" : "Examiner";
-            history.append(label).append(": ").append(turn.getAiQuestion()).append("\n");
-            if (turn.getUserTranscript() != null) {
-                history.append("Student: ").append(turn.getUserTranscript()).append("\n");
-            }
-        }
+                                                    List<SpeakingConversationTurn> existingTurns,
+                                                    SpeakingConversationTurn currentTurn,
+                                                    String nextFollowUp,
+                                                    int currentFollowUpIndex,
+                                                    UUID userId) {
 
-        String nextFollowUpSection = nextFollowUp != null
-                ? "**Next follow-up question to move to (if student is ready):** " + nextFollowUp
-                : "**No more follow-up questions remaining** — if the student answered well, this is the final turn.";
-
-        String prompt = String.format("""
-                You are a friendly, professional IELTS Speaking examiner conducting a live interview.
-                
-                **Topic:** %s
-                **Part:** %s
-                
-                **Conversation so far:**
-                %s
-                
-                **Student's latest answer:** %s
-                
-                %s
-                
-                Your task: Analyze the student's latest answer and decide ONE of these actions:
-                
-                **Action "HINT"** — Choose this if:
-                - The student's answer is very short (only a few words), vague, or off-topic
-                - The student seems to be struggling, hesitating, or says phrases like "I don't know", \
-                "I'm not sure", "um...", or gives a very generic answer
-                - The student explicitly asks for help or seems confused
-                
-                If you choose HINT:
-                - Encourage the student warmly and naturally (e.g., "That's okay, no worries!", "Good start!")
-                - Give them a helpful hint or suggestion to guide their thinking \
-                (e.g., "Think about a time when...", "You could talk about...", "Maybe consider...")
-                - End your response by naturally asking something like: \
-                "Would you like me to give you another hint, or are you ready to give it a try?"
-                - Keep it friendly, encouraging, and slightly humorous
-                
-                **Action "FOLLOWUP"** — Choose this if:
-                - The student gave a reasonable, substantive answer (even if imperfect)
-                - The student indicates they're ready to move on or ready to answer
-                - The student responded to a hint by giving a proper answer
-                
-                If you choose FOLLOWUP:
-                - Briefly comment on their answer naturally (1-2 sentences, can be witty/humorous)
-                - Then smoothly transition to the next follow-up question
-                - Adapt the question naturally so it flows from the conversation
-                
-                IMPORTANT: Respond with EXACTLY this JSON format, nothing else:
-                {"action": "HINT" or "FOLLOWUP", "response": "your spoken response here"}
-                
-                Rules for the "response" field:
-                - Natural spoken English, as if having a real conversation
-                - No prefixes like "Examiner:" or "Question:"
-                - No markdown formatting
-                - Concise (3-5 sentences max)
-                """,
-                topic.getQuestion(),
-                topic.getPart().name(),
-                history.toString(),
-                currentTurn.getUserTranscript(),
-                nextFollowUpSection);
 
         try {
+            String prompt = PromptBuilder.buildAdaptivePrompt(topic, existingTurns, currentTurn, nextFollowUp);
             AiAskResponse aiResponse = openClawService.askAi(prompt, userId);
             String raw = aiResponse.getAnswer().trim();
 
@@ -346,42 +274,6 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         }
     }
 
-    private ConversationResponse toConversationResponse(SpeakingConversation conv, SpeakingTopic topic,
-                                                         List<SpeakingConversationTurn> turns) {
-        List<ConversationTurnResponse> turnResponses = null;
-        if (turns != null) {
-            turnResponses = turns.stream()
-                    .map(t -> ConversationTurnResponse.builder()
-                            .id(t.getId())
-                            .turnNumber(t.getTurnNumber())
-                            .aiQuestion(t.getAiQuestion())
-                            .userTranscript(t.getUserTranscript())
-                            .audioUrl(t.getAudioUrl())
-                            .turnType(t.getTurnType())
-                            .timeSpentSeconds(t.getTimeSpentSeconds())
-                            .createdAt(t.getCreatedAt())
-                            .build())
-                    .collect(Collectors.toList());
-        }
-
-        return ConversationResponse.builder()
-                .id(conv.getId())
-                .topicId(conv.getTopicId())
-                .topicQuestion(topic != null ? topic.getQuestion() : null)
-                .topicPart(topic != null ? topic.getPart().name() : null)
-                .status(conv.getStatus().name())
-                .totalTurns(conv.getTotalTurns())
-                .timeSpentSeconds(conv.getTimeSpentSeconds())
-                .fluencyScore(conv.getFluencyScore())
-                .lexicalScore(conv.getLexicalScore())
-                .grammarScore(conv.getGrammarScore())
-                .pronunciationScore(conv.getPronunciationScore())
-                .overallBandScore(conv.getOverallBandScore())
-                .aiFeedback(conv.getAiFeedback())
-                .startedAt(conv.getStartedAt())
-                .completedAt(conv.getCompletedAt())
-                .gradedAt(conv.getGradedAt())
-                .turns(turnResponses)
-                .build();
+    private record AdaptiveResult(String turnType, String response) {
     }
 }

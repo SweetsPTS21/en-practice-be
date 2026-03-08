@@ -1,18 +1,23 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.SubmitSpeakingRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingTopicFilterRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingAttemptResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicListResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicResponse;
 import com.swpts.enpracticebe.entity.SpeakingAttempt;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingAttemptRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.SpeakingService;
+import com.swpts.enpracticebe.util.AuthUtil;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -24,19 +29,14 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SpeakingServiceImpl implements SpeakingService {
 
     private final SpeakingTopicRepository topicRepository;
     private final SpeakingAttemptRepository attemptRepository;
     private final SpeakingGradingService gradingService;
-
-    public SpeakingServiceImpl(SpeakingTopicRepository topicRepository,
-            SpeakingAttemptRepository attemptRepository,
-            SpeakingGradingService gradingService) {
-        this.topicRepository = topicRepository;
-        this.attemptRepository = attemptRepository;
-        this.gradingService = gradingService;
-    }
+    private final AuthUtil authUtil;
+    private final SpeakingMapper speakingMapper;
 
     @Override
     public PageResponse<SpeakingTopicListResponse> getTopics(SpeakingTopicFilterRequest request) {
@@ -64,7 +64,7 @@ public class SpeakingServiceImpl implements SpeakingService {
         }
 
         List<SpeakingTopicListResponse> items = page.getContent().stream()
-                .map(this::toListResponse)
+                .map(speakingMapper::toListResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<SpeakingTopicListResponse>builder()
@@ -80,13 +80,13 @@ public class SpeakingServiceImpl implements SpeakingService {
     public SpeakingTopicResponse getTopicDetail(UUID topicId) {
         SpeakingTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
-        return toTopicResponse(topic);
+        return speakingMapper.toTopicResponse(topic);
     }
 
     @Override
     @Transactional
     public SpeakingAttemptResponse submitAttempt(UUID topicId, SubmitSpeakingRequest request) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         SpeakingTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
@@ -109,12 +109,12 @@ public class SpeakingServiceImpl implements SpeakingService {
             }
         });
 
-        return toAttemptResponse(attempt, topic);
+        return speakingMapper.toAttemptResponse(attempt, topic);
     }
 
     @Override
     public SpeakingAttemptResponse getAttemptDetail(UUID attemptId) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         SpeakingAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
@@ -126,12 +126,12 @@ public class SpeakingServiceImpl implements SpeakingService {
         SpeakingTopic topic = topicRepository.findById(attempt.getTopicId())
                 .orElseThrow(() -> new RuntimeException("Topic not found: " + attempt.getTopicId()));
 
-        return toAttemptResponse(attempt, topic);
+        return speakingMapper.toAttemptResponse(attempt, topic);
     }
 
     @Override
     public PageResponse<SpeakingAttemptResponse> getAttemptHistory(int page, int size) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
         List<SpeakingAttempt> allAttempts = attemptRepository.findByUserIdOrderBySubmittedAtDesc(userId);
 
         int total = allAttempts.size();
@@ -149,7 +149,7 @@ public class SpeakingServiceImpl implements SpeakingService {
         List<SpeakingAttemptResponse> items = pageAttempts.stream()
                 .map(att -> {
                     SpeakingTopic topic = topicMap.get(att.getTopicId());
-                    return toAttemptResponse(att, topic);
+                    return speakingMapper.toAttemptResponse(att, topic);
                 })
                 .collect(Collectors.toList());
 
@@ -159,57 +159,6 @@ public class SpeakingServiceImpl implements SpeakingService {
                 .totalElements((long) total)
                 .totalPages((int) Math.ceil((double) total / size))
                 .items(items)
-                .build();
-    }
-
-    // ─── Private helpers ────────────────────────────────────────────────────────
-
-    private UUID getCurrentUserId() {
-        return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
-
-    private SpeakingTopicListResponse toListResponse(SpeakingTopic topic) {
-        return SpeakingTopicListResponse.builder()
-                .id(topic.getId())
-                .part(topic.getPart().name())
-                .question(topic.getQuestion())
-                .difficulty(topic.getDifficulty().name())
-                .createdAt(topic.getCreatedAt())
-                .build();
-    }
-
-    private SpeakingTopicResponse toTopicResponse(SpeakingTopic topic) {
-        return SpeakingTopicResponse.builder()
-                .id(topic.getId())
-                .part(topic.getPart().name())
-                .question(topic.getQuestion())
-                .cueCard(topic.getCueCard())
-                .followUpQuestions(topic.getFollowUpQuestions())
-                .difficulty(topic.getDifficulty().name())
-                .isPublished(topic.getIsPublished())
-                .createdAt(topic.getCreatedAt())
-                .updatedAt(topic.getUpdatedAt())
-                .build();
-    }
-
-    private SpeakingAttemptResponse toAttemptResponse(SpeakingAttempt attempt, SpeakingTopic topic) {
-        return SpeakingAttemptResponse.builder()
-                .id(attempt.getId())
-                .topicId(attempt.getTopicId())
-                .topicQuestion(topic != null ? topic.getQuestion() : "Unknown")
-                .topicPart(topic != null ? topic.getPart().name() : null)
-                .audioUrl(attempt.getAudioUrl())
-                .transcript(attempt.getTranscript())
-                .timeSpentSeconds(attempt.getTimeSpentSeconds())
-                .status(attempt.getStatus().name())
-                .fluencyScore(attempt.getFluencyScore())
-                .lexicalScore(attempt.getLexicalScore())
-                .grammarScore(attempt.getGrammarScore())
-                .pronunciationScore(attempt.getPronunciationScore())
-                .overallBandScore(attempt.getOverallBandScore())
-                .aiFeedback(attempt.getAiFeedback())
-                .submittedAt(attempt.getSubmittedAt())
-                .gradedAt(attempt.getGradedAt())
                 .build();
     }
 }

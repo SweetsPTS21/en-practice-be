@@ -1,17 +1,27 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.AnswerItem;
-import com.swpts.enpracticebe.dto.request.IeltsTestFilterRequest;
-import com.swpts.enpracticebe.dto.request.SubmitTestRequest;
-import com.swpts.enpracticebe.dto.response.*;
-import com.swpts.enpracticebe.entity.*;
-import com.swpts.enpracticebe.repository.*;
+import com.swpts.enpracticebe.constant.Constants;
+import com.swpts.enpracticebe.dto.request.listening.AnswerItem;
+import com.swpts.enpracticebe.dto.request.listening.IeltsTestFilterRequest;
+import com.swpts.enpracticebe.dto.request.listening.SubmitTestRequest;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.listening.*;
+import com.swpts.enpracticebe.entity.IeltsAnswerRecord;
+import com.swpts.enpracticebe.entity.IeltsQuestion;
+import com.swpts.enpracticebe.entity.IeltsTest;
+import com.swpts.enpracticebe.entity.IeltsTestAttempt;
+import com.swpts.enpracticebe.mapper.IeltsMapper;
+import com.swpts.enpracticebe.repository.IeltsAnswerRecordRepository;
+import com.swpts.enpracticebe.repository.IeltsQuestionRepository;
+import com.swpts.enpracticebe.repository.IeltsTestAttemptRepository;
+import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.IeltsTestService;
+import com.swpts.enpracticebe.util.AuthUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,46 +30,15 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class IeltsTestServiceImpl implements IeltsTestService {
 
     private final IeltsTestRepository testRepository;
-    private final IeltsSectionRepository sectionRepository;
-    private final IeltsPassageRepository passageRepository;
     private final IeltsQuestionRepository questionRepository;
     private final IeltsTestAttemptRepository attemptRepository;
     private final IeltsAnswerRecordRepository answerRecordRepository;
-
-    public IeltsTestServiceImpl(IeltsTestRepository testRepository,
-            IeltsSectionRepository sectionRepository,
-            IeltsPassageRepository passageRepository,
-            IeltsQuestionRepository questionRepository,
-            IeltsTestAttemptRepository attemptRepository,
-            IeltsAnswerRecordRepository answerRecordRepository) {
-        this.testRepository = testRepository;
-        this.sectionRepository = sectionRepository;
-        this.passageRepository = passageRepository;
-        this.questionRepository = questionRepository;
-        this.attemptRepository = attemptRepository;
-        this.answerRecordRepository = answerRecordRepository;
-    }
-
-    // ─── Band score mapping (IELTS standard for Listening/Reading out of 40) ───
-    private static final int[][] BAND_TABLE = {
-            { 39, 90 }, // 39-40 → 9.0
-            { 37, 85 }, // 37-38 → 8.5
-            { 35, 80 }, // 35-36 → 8.0
-            { 33, 75 }, // 33-34 → 7.5
-            { 30, 70 }, // 30-32 → 7.0
-            { 27, 65 }, // 27-29 → 6.5
-            { 23, 60 }, // 23-26 → 6.0
-            { 20, 55 }, // 20-22 → 5.5
-            { 16, 50 }, // 16-19 → 5.0
-            { 13, 45 }, // 13-15 → 4.5
-            { 10, 40 }, // 10-12 → 4.0
-            { 6, 35 }, // 6-9 → 3.5
-            { 4, 30 }, // 4-5 → 3.0
-            { 0, 25 }, // 0-3 → 2.5
-    };
+    private final IeltsMapper ieltsMapper;
+    private final AuthUtil authUtil;
 
     // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -90,7 +69,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
         }
 
         List<IeltsTestListResponse> items = page.getContent().stream()
-                .map(this::toListResponse)
+                .map(ieltsMapper::toListResponse)
                 .collect(Collectors.toList());
 
         return PageResponse.<IeltsTestListResponse>builder()
@@ -107,13 +86,13 @@ public class IeltsTestServiceImpl implements IeltsTestService {
     public IeltsTestDetailResponse getTestDetail(UUID testId) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
-        return buildTestDetail(test);
+        return ieltsMapper.buildTestDetail(test);
     }
 
     @Override
     @Transactional
     public StartTestResponse startTest(UUID testId) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
 
@@ -129,14 +108,14 @@ public class IeltsTestServiceImpl implements IeltsTestService {
 
         return StartTestResponse.builder()
                 .attemptId(attempt.getId())
-                .testDetail(buildTestDetail(test))
+                .testDetail(ieltsMapper.buildTestDetail(test))
                 .build();
     }
 
     @Override
     @Transactional
     public SubmitTestResponse submitTest(SubmitTestRequest request) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         IeltsTestAttempt attempt = attemptRepository.findById(request.getAttemptId())
                 .orElseThrow(() -> new RuntimeException("Attempt not found: " + request.getAttemptId()));
@@ -215,7 +194,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
 
     @Override
     public PageResponse<TestAttemptHistoryResponse> getAttemptHistory(int page, int size) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
         List<IeltsTestAttempt> allAttempts = attemptRepository.findByUserIdOrderByStartedAtDesc(userId);
 
         // Manual pagination
@@ -261,7 +240,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
 
     @Override
     public SubmitTestResponse getAttemptDetail(UUID attemptId) {
-        UUID userId = getCurrentUserId();
+        UUID userId = authUtil.getUserId();
 
         IeltsTestAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
@@ -303,77 +282,6 @@ public class IeltsTestServiceImpl implements IeltsTestService {
 
     // ─── Private helpers ────────────────────────────────────────────────────────
 
-    private UUID getCurrentUserId() {
-        return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    }
-
-    private IeltsTestListResponse toListResponse(IeltsTest test) {
-        int totalQ = questionRepository.findAllByTestId(test.getId()).size();
-        return IeltsTestListResponse.builder()
-                .id(test.getId())
-                .title(test.getTitle())
-                .skill(test.getSkill().name())
-                .timeLimitMinutes(test.getTimeLimitMinutes())
-                .difficulty(test.getDifficulty().name())
-                .totalQuestions(totalQ)
-                .createdAt(test.getCreatedAt())
-                .build();
-    }
-
-    private IeltsTestDetailResponse buildTestDetail(IeltsTest test) {
-        List<IeltsSection> sections = sectionRepository.findByTestIdOrderBySectionOrder(test.getId());
-
-        List<IeltsTestDetailResponse.SectionDto> sectionDtos = sections.stream()
-                .map(section -> {
-                    List<IeltsPassage> passages = passageRepository
-                            .findBySectionIdOrderByPassageOrder(section.getId());
-
-                    List<IeltsTestDetailResponse.PassageDto> passageDtos = passages.stream()
-                            .map(passage -> {
-                                List<IeltsQuestion> questions = questionRepository
-                                        .findByPassageIdOrderByQuestionOrder(passage.getId());
-
-                                List<IeltsTestDetailResponse.QuestionDto> questionDtos = questions.stream()
-                                        .map(q -> IeltsTestDetailResponse.QuestionDto.builder()
-                                                .id(q.getId())
-                                                .questionOrder(q.getQuestionOrder())
-                                                .questionType(q.getQuestionType().name())
-                                                .questionText(q.getQuestionText())
-                                                .options(q.getOptions())
-                                                .build())
-                                        .collect(Collectors.toList());
-
-                                return IeltsTestDetailResponse.PassageDto.builder()
-                                        .id(passage.getId())
-                                        .passageOrder(passage.getPassageOrder())
-                                        .title(passage.getTitle())
-                                        .content(passage.getContent())
-                                        .questions(questionDtos)
-                                        .build();
-                            })
-                            .collect(Collectors.toList());
-
-                    return IeltsTestDetailResponse.SectionDto.builder()
-                            .id(section.getId())
-                            .sectionOrder(section.getSectionOrder())
-                            .title(section.getTitle())
-                            .audioUrl(section.getAudioUrl())
-                            .instructions(section.getInstructions())
-                            .passages(passageDtos)
-                            .build();
-                })
-                .collect(Collectors.toList());
-
-        return IeltsTestDetailResponse.builder()
-                .id(test.getId())
-                .title(test.getTitle())
-                .skill(test.getSkill().name())
-                .timeLimitMinutes(test.getTimeLimitMinutes())
-                .difficulty(test.getDifficulty().name())
-                .sections(sectionDtos)
-                .build();
-    }
-
     /**
      * Compare user answers against correct answers (case-insensitive, trimmed).
      * Both are List<String> — answers match if all elements match in order.
@@ -403,7 +311,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
                 ? Math.round((float) correctCount / totalQuestions * 40)
                 : 0;
 
-        for (int[] entry : BAND_TABLE) {
+        for (int[] entry : Constants.BAND_TABLE) {
             if (normalized >= entry[0]) {
                 return entry[1] / 10.0f;
             }

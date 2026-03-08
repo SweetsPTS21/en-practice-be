@@ -1,8 +1,11 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.request.SubmitSpeakingRequest;
-import com.swpts.enpracticebe.dto.request.SpeakingTopicFilterRequest;
-import com.swpts.enpracticebe.dto.response.*;
+import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
+import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingAttemptResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicListResponse;
+import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicResponse;
 
 import java.util.UUID;
 

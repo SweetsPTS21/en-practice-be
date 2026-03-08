@@ -1,20 +1,22 @@
 package com.swpts.enpracticebe.service.impl;
 
-import com.swpts.enpracticebe.dto.request.AdminIeltsTestFilterRequest;
-import com.swpts.enpracticebe.dto.request.CreateIeltsTestRequest;
-import com.swpts.enpracticebe.dto.request.UpdateIeltsTestRequest;
-import com.swpts.enpracticebe.dto.response.IeltsTestDetailResponse;
-import com.swpts.enpracticebe.dto.response.AdminIeltsTestListResponse;
+import com.swpts.enpracticebe.dto.request.admin.AdminIeltsTestFilterRequest;
+import com.swpts.enpracticebe.dto.request.admin.CreateIeltsTestRequest;
+import com.swpts.enpracticebe.dto.request.admin.UpdateIeltsTestRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.admin.AdminIeltsTestListResponse;
+import com.swpts.enpracticebe.dto.response.listening.IeltsTestDetailResponse;
 import com.swpts.enpracticebe.entity.IeltsPassage;
 import com.swpts.enpracticebe.entity.IeltsQuestion;
 import com.swpts.enpracticebe.entity.IeltsSection;
 import com.swpts.enpracticebe.entity.IeltsTest;
+import com.swpts.enpracticebe.mapper.IeltsMapper;
 import com.swpts.enpracticebe.repository.IeltsPassageRepository;
 import com.swpts.enpracticebe.repository.IeltsQuestionRepository;
 import com.swpts.enpracticebe.repository.IeltsSectionRepository;
 import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.AdminIeltsTestService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -30,22 +32,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
     private final IeltsTestRepository testRepository;
     private final IeltsSectionRepository sectionRepository;
     private final IeltsPassageRepository passageRepository;
     private final IeltsQuestionRepository questionRepository;
-
-    public AdminIeltsTestServiceImpl(IeltsTestRepository testRepository,
-            IeltsSectionRepository sectionRepository,
-            IeltsPassageRepository passageRepository,
-            IeltsQuestionRepository questionRepository) {
-        this.testRepository = testRepository;
-        this.sectionRepository = sectionRepository;
-        this.passageRepository = passageRepository;
-        this.questionRepository = questionRepository;
-    }
+    private final IeltsMapper ieltsMapper;
 
     // ─── List Tests ──────────────────────────────────────────────────────────────
 
@@ -81,7 +75,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     public IeltsTestDetailResponse getTestDetail(UUID testId) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
-        return buildDetailResponse(test);
+        return ieltsMapper.buildDetailResponse(test);
     }
 
     // ─── Create Test ─────────────────────────────────────────────────────────────
@@ -104,7 +98,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
         saveNestedStructure(test.getId(), request.getSections());
 
-        return buildDetailResponse(test);
+        return ieltsMapper.buildDetailResponse(test);
     }
 
     // ─── Update Test ─────────────────────────────────────────────────────────────
@@ -134,7 +128,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
         // Re-create nested structure
         saveNestedStructure(testId, request.getSections());
 
-        return buildDetailResponse(test);
+        return ieltsMapper.buildDetailResponse(test);
     }
 
     // ─── Delete Test ─────────────────────────────────────────────────────────────
@@ -239,7 +233,7 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     }
 
     private Page<IeltsTest> findTests(boolean hasSkill, boolean hasDifficulty, boolean hasPublished,
-            AdminIeltsTestFilterRequest request, PageRequest pageable) {
+                                      AdminIeltsTestFilterRequest request, PageRequest pageable) {
         IeltsTest.Skill skill = hasSkill ? IeltsTest.Skill.valueOf(request.getSkill()) : null;
         IeltsTest.Difficulty difficulty = hasDifficulty ? IeltsTest.Difficulty.valueOf(request.getDifficulty()) : null;
 
@@ -275,63 +269,6 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
                 .totalQuestions(totalQ)
                 .createdAt(test.getCreatedAt())
                 .updatedAt(test.getUpdatedAt())
-                .build();
-    }
-
-    private IeltsTestDetailResponse buildDetailResponse(IeltsTest test) {
-        List<IeltsSection> sections = sectionRepository.findByTestIdOrderBySectionOrder(test.getId());
-
-        List<IeltsTestDetailResponse.SectionDto> sectionDtos = sections.stream()
-                .map(section -> {
-                    List<IeltsPassage> passages = passageRepository
-                            .findBySectionIdOrderByPassageOrder(section.getId());
-
-                    List<IeltsTestDetailResponse.PassageDto> passageDtos = passages.stream()
-                            .map(passage -> {
-                                List<IeltsQuestion> questions = questionRepository
-                                        .findByPassageIdOrderByQuestionOrder(passage.getId());
-
-                                List<IeltsTestDetailResponse.QuestionDto> questionDtos = questions.stream()
-                                        .map(q -> IeltsTestDetailResponse.QuestionDto.builder()
-                                                .id(q.getId())
-                                                .questionOrder(q.getQuestionOrder())
-                                                .questionType(q.getQuestionType().name())
-                                                .questionText(q.getQuestionText())
-                                                .options(q.getOptions())
-                                                .correctAnswers(q.getCorrectAnswers())
-                                                .explanation(q.getExplanation())
-                                                .build())
-                                        .collect(Collectors.toList());
-
-                                return IeltsTestDetailResponse.PassageDto.builder()
-                                        .id(passage.getId())
-                                        .passageOrder(passage.getPassageOrder())
-                                        .title(passage.getTitle())
-                                        .content(passage.getContent())
-                                        .questions(questionDtos)
-                                        .build();
-                            })
-                            .collect(Collectors.toList());
-
-                    return IeltsTestDetailResponse.SectionDto.builder()
-                            .id(section.getId())
-                            .sectionOrder(section.getSectionOrder())
-                            .title(section.getTitle())
-                            .audioUrl(section.getAudioUrl())
-                            .instructions(section.getInstructions())
-                            .passages(passageDtos)
-                            .build();
-                })
-                .collect(Collectors.toList());
-
-        return IeltsTestDetailResponse.builder()
-                .id(test.getId())
-                .title(test.getTitle())
-                .skill(test.getSkill().name())
-                .timeLimitMinutes(test.getTimeLimitMinutes())
-                .difficulty(test.getDifficulty().name())
-                .isPublished(test.getIsPublished())
-                .sections(sectionDtos)
                 .build();
     }
 }

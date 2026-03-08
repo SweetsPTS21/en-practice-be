@@ -1,9 +1,9 @@
 package com.swpts.enpracticebe.service;
 
-import com.swpts.enpracticebe.dto.request.SubmitTurnRequest;
-import com.swpts.enpracticebe.dto.response.ConversationResponse;
-import com.swpts.enpracticebe.dto.response.NextQuestionResponse;
+import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
+import com.swpts.enpracticebe.dto.response.speaking.ConversationResponse;
+import com.swpts.enpracticebe.dto.response.speaking.NextQuestionResponse;
 
 import java.util.UUID;
 

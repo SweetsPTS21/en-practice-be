@@ -2,7 +2,7 @@ package com.swpts.enpracticebe.service.impl;
 
 import com.swpts.enpracticebe.constant.Constants;
 import com.swpts.enpracticebe.constant.S3Properties;
-import com.swpts.enpracticebe.dto.response.PresignUrlResponse;
+import com.swpts.enpracticebe.dto.response.auth.PresignUrlResponse;
 import com.swpts.enpracticebe.service.FileService;
 import com.swpts.enpracticebe.util.SignatureUtil;
 import jakarta.validation.ValidationException;
