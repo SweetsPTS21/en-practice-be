@@ -1,0 +1,336 @@
+Tổng thể layout Home
+
+Layout gợi ý:
+
+--------------------------------------------------
+Header
+--------------------------------------------------
+
+Today Learning Panel
+
+--------------------------------------------------
+Daily Streak | Today's Tasks | Quick Practice
+--------------------------------------------------
+
+Progress Overview
+
+--------------------------------------------------
+Band Progress | Vocabulary Progress | Weak Skills
+--------------------------------------------------
+
+Practice Recommendation
+
+--------------------------------------------------
+Recommended Practice
+
+--------------------------------------------------
+
+Recent Activity
+
+--------------------------------------------------
+History / Achievements
+--------------------------------------------------
+2️⃣ Today Learning Panel (quan trọng nhất)
+
+Đây là phần user nhìn thấy đầu tiên.
+
+Nội dung
+🔥 Streak: 12 days
+📅 Today goal: 30 minutes
+
+Progress bar:
+
+[████████░░░░░] 18 / 30 minutes
+
+CTA chính:
+
+▶ Continue learning
+Quick actions
+Practice Vocabulary
+Listening Practice
+Reading Practice
+Speaking Practice
+
+Chỉ cần 1 click để bắt đầu.
+
+3️⃣ Daily Tasks (tạo thói quen)
+
+Phần này giúp user có checklist mỗi ngày.
+
+Today's Tasks
+☑ Review 20 vocabulary
+☐ Listening mini test
+☐ Reading passage
+☐ Speaking question
+
+Progress:
+
+3 / 4 tasks completed
+Reward
+
+Khi hoàn thành:
+
++20 XP
++1 streak
+4️⃣ Streak System
+
+Đây là yếu tố giữ user quay lại mạnh nhất.
+
+Hiển thị:
+
+🔥 12 Day Streak
+
+Calendar dạng:
+
+Mon Tue Wed Thu Fri Sat Sun
+
+■ ■ ■ □ □ ■ ■
+
+Giống GitHub heatmap.
+
+5️⃣ Progress Overview
+
+User muốn biết:
+
+mình đang tiến bộ không?
+IELTS Band Progress
+
+Chart:
+
+Listening  6.0 → 6.5
+Reading    5.5 → 6.0
+Writing    5.0 → 5.5
+Speaking   5.5 → 6.0
+
+Line chart:
+
+Band progress last 30 days
+Vocabulary Progress
+Total words learned: 820
+Words mastered: 420
+Words reviewing: 120
+
+Chart:
+
+Learning progress
+6️⃣ Weak Skills (AI recommendation)
+
+Phần này rất quan trọng.
+
+System phân tích:
+
+User hay sai dạng bài nào
+
+Ví dụ:
+
+⚠ Weak skills
+
+True / False / Not Given
+Map labeling
+Academic vocabulary
+
+Button:
+
+Practice now
+7️⃣ Recommended Practice
+
+AI đề xuất bài tập.
+
+Ví dụ:
+
+Recommended for you
+
+Card:
+
+Reading Practice
+True / False / Not Given
+Difficulty: Medium
+⏱ 8 minutes
+Vocabulary
+Academic words set 4
+⏱ 5 minutes
+8️⃣ Vocabulary Daily Learning
+
+Phần rất quan trọng cho retention.
+
+Hiển thị:
+
+Today's words
+
+Ví dụ:
+
+inevitable
+pronunciation
+definition
+example sentence
+
+User có thể:
+
+Flip card
+Hear pronunciation
+Save word
+9️⃣ Mini Practice (micro learning)
+
+Các bài 3–5 phút.
+
+Quick Practice
+
+Ví dụ:
+
+3-minute listening
+5 vocabulary flashcards
+1 speaking question
+
+User học nhanh trong:
+
+break time
+bus
+coffee
+🔟 Recent Activity
+
+Hiển thị lịch sử học.
+
+Recent activity
+Listening test completed
+Score: 7/10
+
+Vocabulary review
+20 words
+
+Speaking practice
+Band estimate: 6.0
+11️⃣ Achievement System
+
+Gamification.
+
+Ví dụ:
+
+Achievements
+🔥 7 day streak
+📚 500 words learned
+🎧 10 listening tests
+12️⃣ Weekly Report
+
+Mỗi tuần user thấy:
+
+Weekly progress
+Time studied: 2h 20m
+Vocabulary learned: 85
+Tests completed: 6
+Band improvement: +0.3
+13️⃣ Social Proof (optional)
+
+Nếu có cộng đồng:
+
+Leaderboard
+Top learners this week
+14️⃣ Smart Reminder
+
+Nếu user inactive.
+
+Banner:
+
+You haven't practiced for 2 days.
+Continue your streak!
+15️⃣ Notification Widget
+
+Hiển thị:
+
+New practice available
+Teacher feedback
+Daily reminder
+16️⃣ UX Flow (rất quan trọng)
+
+User vào Home:
+
+Open website
+     ↓
+See today's goal
+     ↓
+Click Continue Learning
+     ↓
+Do quick practice
+     ↓
+Complete daily tasks
+
+Chỉ mất:
+
+5 minutes
+17️⃣ Data cần backend
+
+Dashboard API:
+
+GET /user/dashboard
+
+Response:
+
+{
+  "streak": 12,
+  "todayGoal": 30,
+  "progress": 18,
+  "bandProgress": {...},
+  "weakSkills": [],
+  "recommendedPractice": [],
+  "recentActivities": []
+}
+18️⃣ Chart gợi ý
+
+Dùng:
+
+Recharts
+
+Nivo
+
+Charts cần có:
+
+band progress line chart
+vocabulary progress bar
+weekly study time
+streak heatmap
+19️⃣ Thứ tự ưu tiên feature
+MVP
+today goal
+streak
+daily tasks
+quick practice
+progress chart
+Phase 2
+AI recommendation
+weak skills analysis
+weekly report
+Phase 3
+leaderboard
+achievement system
+gamification
+🔥 Một số feature rất hút user
+
+Nếu làm tốt retention sẽ tăng mạnh.
+
+Study Streak Freeze
+
+User có thể:
+
+skip 1 day
+
+không mất streak.
+
+Vocabulary memory system
+
+Áp dụng:
+
+spaced repetition
+AI speaking partner
+
+User nói chuyện với AI.
+
+📊 Nguyên tắc thiết kế Home
+
+Home phải:
+
+clear progress
+quick start
+daily motivation
+
+User phải thấy:
+
+I am improving
