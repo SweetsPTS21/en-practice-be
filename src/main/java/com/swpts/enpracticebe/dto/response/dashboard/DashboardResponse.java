@@ -18,4 +18,7 @@ public class DashboardResponse {
     private ProgressOverview progress;
     private List<RecentActivity> recentActivities;
     private List<QuickPracticeItem> quickPractice;
+    private List<String> weakSkills;
+    private List<RecommendedPractice> recommendedPractice;
+    private SmartReminder smartReminder;
 }

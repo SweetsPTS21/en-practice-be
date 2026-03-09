@@ -4,6 +4,7 @@ import com.swpts.enpracticebe.dto.response.dashboard.*;
 import com.swpts.enpracticebe.entity.*;
 import com.swpts.enpracticebe.repository.*;
 import com.swpts.enpracticebe.service.UserDashboardService;
+import com.swpts.enpracticebe.service.UserStatsAggregatorService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import com.swpts.enpracticebe.util.DateUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class UserDashboardServiceImpl implements UserDashboardService {
     private final IeltsTestAttemptRepository ieltsTestAttemptRepository;
     private final SpeakingAttemptRepository speakingAttemptRepository;
     private final WritingSubmissionRepository writingSubmissionRepository;
+    private final UserStatsAggregatorService userStatsAggregatorService;
 
     @Override
     public DashboardResponse getDashboard() {
@@ -37,16 +39,36 @@ public class UserDashboardServiceImpl implements UserDashboardService {
         CompletableFuture<ProgressOverview> progressFuture = CompletableFuture.supplyAsync(() -> getProgressOverview(userId));
         CompletableFuture<List<RecentActivity>> recentFuture = CompletableFuture.supplyAsync(() -> getRecentActivities(userId));
         CompletableFuture<List<QuickPracticeItem>> quickFuture = CompletableFuture.supplyAsync(this::generateQuickPractice);
+        CompletableFuture<List<String>> weakSkillsFuture = CompletableFuture.supplyAsync(() -> userStatsAggregatorService.getWeakSkills(userId));
 
-        CompletableFuture.allOf(streakFuture, goalFuture, tasksFuture, progressFuture, recentFuture, quickFuture).join();
+        CompletableFuture.allOf(streakFuture, goalFuture, tasksFuture, progressFuture, recentFuture, quickFuture, weakSkillsFuture).join();
+
+        List<String> weakSkills = weakSkillsFuture.join();
+        List<RecommendedPractice> recommendedPractice = userStatsAggregatorService.getRecommendedPractice(weakSkills);
+        
+        // MVP Smart Reminder: if current streak is 0 but longest streak > 0, or just haven't studied today
+        StreakInfo streak = streakFuture.join();
+        SmartReminder smartReminder = null;
+        if (streak.getCurrentStreak() == 0) {
+            smartReminder = SmartReminder.builder()
+                .title("Keep your streak alive!")
+                .message("You haven't practiced today. 5 minutes is all it takes.")
+                .type("WARNING")
+                .ctaText("Practice Now")
+                .ctaPath("/ielts")
+                .build();
+        }
 
         return DashboardResponse.builder()
-                .streak(streakFuture.join())
+                .streak(streak)
                 .todayGoal(goalFuture.join())
                 .dailyTasks(tasksFuture.join())
                 .progress(progressFuture.join())
                 .recentActivities(recentFuture.join())
                 .quickPractice(quickFuture.join())
+                .weakSkills(weakSkills)
+                .recommendedPractice(recommendedPractice)
+                .smartReminder(smartReminder)
                 .build();
     }
 

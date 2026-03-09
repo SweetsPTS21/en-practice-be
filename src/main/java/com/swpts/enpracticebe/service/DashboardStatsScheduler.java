@@ -1,6 +1,7 @@
 package com.swpts.enpracticebe.service;
 
 import com.swpts.enpracticebe.entity.DashboardDailyStat;
+import com.swpts.enpracticebe.entity.UserWeeklyReport;
 import com.swpts.enpracticebe.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class DashboardStatsScheduler {
     private final SpeakingAttemptRepository speakingAttemptRepository;
     private final WritingSubmissionRepository writingSubmissionRepository;
     private final VocabularyRecordRepository vocabularyRecordRepository;
+    private final UserWeeklyReportRepository userWeeklyReportRepository;
 
     @Scheduled(cron = "0 0 0 * * *") // Runs daily at midnight
     @Transactional
@@ -37,6 +39,34 @@ public class DashboardStatsScheduler {
         log.info("Starting dashboard daily stats calculation...");
         calculateAndSaveStats(LocalDate.now());
         log.info("Dashboard daily stats calculation completed.");
+    }
+
+    @Scheduled(cron = "0 59 23 * * SUN") // Runs every Sunday at 23:59
+    @Transactional
+    public void generateWeeklyReports() {
+        log.info("Starting weekly reports generation...");
+        Instant endOfWeek = Instant.now();
+        Instant startOfWeek = LocalDate.now(ZoneOffset.UTC)
+                .with(java.time.DayOfWeek.MONDAY)
+                .atStartOfDay(ZoneOffset.UTC).toInstant();
+        
+        userRepository.findAll().forEach(user -> {
+            int studyMinutes = 0; // In reality, fetch sum time spent from attempts
+            int vocabLearned = (int) vocabularyRecordRepository.countByUserIdAndTestedAtAfter(user.getId(), startOfWeek);
+            int tests = ieltsTestAttemptRepository.findByUserIdAndStartedAtBetween(user.getId(), startOfWeek, endOfWeek).size();
+            
+            UserWeeklyReport report = UserWeeklyReport.builder()
+                .userId(user.getId())
+                .weekStart(startOfWeek)
+                .weekEnd(endOfWeek)
+                .studyMinutes(studyMinutes)
+                .vocabularyLearned(vocabLearned)
+                .testsCompleted(tests)
+                .bandImprovement(0.0f) // Mock band improvement for MVP
+                .build();
+            userWeeklyReportRepository.save(report);
+        });
+        log.info("Weekly reports generation completed.");
     }
 
     @Transactional

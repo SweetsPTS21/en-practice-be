@@ -16,15 +16,19 @@ import java.util.stream.Stream;
 @Configuration
 public class CacheConfig {
 
-    /** Long-lived caches (60 min) — content lists, details, presigned URLs */
+    /**
+     * Long-lived caches (60 min) — content lists, details, presigned URLs
+     */
     private static final String[] LONG_TTL_CACHES = {
             "presignUrl", "ieltsTestDetail", "adminIeltsTestList", "ieltsTestList",
             "adminWritingTaskList", "writingTaskDetail", "writingTaskList",
             "adminSpeakingTopicList", "speakingTopicDetail", "speakingTopicList",
-            "adminUserList", "adminUserDetail", "adminAuditLogList"
+            "adminUserList", "adminUserDetail", "adminAuditLogList", "userWeakSkills"
     };
 
-    /** Short-lived caches (5 min) — real-time dashboard data */
+    /**
+     * Short-lived caches (5 min) — real-time dashboard data
+     */
     private static final String[] SHORT_TTL_CACHES = {
             "dashboardStats", "dashboardRecentActivities", "dashboardUserActivityChart"
     };
