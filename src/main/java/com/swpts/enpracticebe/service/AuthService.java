@@ -86,16 +86,20 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        fcmTokenRepository.findByUserId(user.getId())
+        fcmTokenRepository.findByToken(request.getFcmToken())
                 .ifPresentOrElse(
                         existingToken -> {
-                            existingToken.setToken(request.getFcmToken());
+                            existingToken.setUserId(user.getId());
+                            existingToken.setOs(request.getOs());
+                            existingToken.setBrowser(request.getBrowser());
                             fcmTokenRepository.save(existingToken);
                         },
                         () -> {
                             FcmToken newToken = new FcmToken();
                             newToken.setUserId(user.getId());
                             newToken.setToken(request.getFcmToken());
+                            newToken.setOs(request.getOs());
+                            newToken.setBrowser(request.getBrowser());
                             fcmTokenRepository.save(newToken);
                         });
     }

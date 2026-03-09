@@ -7,4 +7,8 @@ import lombok.Data;
 public class FirebaseTokenRequest {
     @NotBlank(message = "FCM token is required")
     private String fcmToken;
+
+    private String os;
+
+    private String browser;
 }

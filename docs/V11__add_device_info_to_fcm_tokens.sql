@@ -1,0 +1,3 @@
+ALTER TABLE fcm_tokens
+ADD COLUMN os VARCHAR(50),
+ADD COLUMN browser VARCHAR(50);

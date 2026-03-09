@@ -20,4 +20,10 @@ public class FcmToken {
 
     @Column(name = "token", nullable = false)
     private String token;
+
+    @Column(name = "os", length = 50)
+    private String os;
+
+    @Column(name = "browser", length = 50)
+    private String browser;
 }
