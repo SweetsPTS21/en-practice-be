@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -51,9 +52,17 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
 
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("Account is disabled");
+        }
+
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new IllegalArgumentException("Invalid email or password");
         }
+
+        // Track last login
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
 
         String token = jwtUtil.generateToken(user.getId(), user.getRole().name());
 

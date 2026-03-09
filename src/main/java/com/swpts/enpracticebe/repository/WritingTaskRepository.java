@@ -37,4 +37,6 @@ public interface WritingTaskRepository extends JpaRepository<WritingTask, UUID> 
 
     Page<WritingTask> findByTaskTypeAndDifficultyAndIsPublishedTrue(WritingTask.TaskType taskType,
             WritingTask.Difficulty difficulty, Pageable pageable);
+
+    long countByIsPublishedTrue();
 }

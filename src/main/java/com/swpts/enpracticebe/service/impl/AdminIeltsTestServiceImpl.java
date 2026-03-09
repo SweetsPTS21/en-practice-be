@@ -16,6 +16,8 @@ import com.swpts.enpracticebe.repository.IeltsQuestionRepository;
 import com.swpts.enpracticebe.repository.IeltsSectionRepository;
 import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.AdminIeltsTestService;
+import com.swpts.enpracticebe.service.AuditLogService;
+import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -28,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -40,6 +43,8 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     private final IeltsPassageRepository passageRepository;
     private final IeltsQuestionRepository questionRepository;
     private final IeltsMapper ieltsMapper;
+    private final AuditLogService auditLogService;
+    private final AuthUtil authUtil;
 
     // ─── List Tests ──────────────────────────────────────────────────────────────
 
@@ -98,6 +103,9 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
 
         saveNestedStructure(test.getId(), request.getSections());
 
+        auditLogService.log(authUtil.getUserId(), "CREATE", "IELTS_TEST", test.getId(), 
+                Map.of("title", test.getTitle(), "skill", test.getSkill().name(), "isPublished", test.getIsPublished()));
+
         return ieltsMapper.buildDetailResponse(test);
     }
 
@@ -128,6 +136,9 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
         // Re-create nested structure
         saveNestedStructure(testId, request.getSections());
 
+        auditLogService.log(authUtil.getUserId(), "UPDATE", "IELTS_TEST", testId, 
+                Map.of("title", test.getTitle(), "skill", test.getSkill().name(), "isPublished", test.getIsPublished()));
+
         return ieltsMapper.buildDetailResponse(test);
     }
 
@@ -141,11 +152,12 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
             @CacheEvict(value = "ieltsTestList", allEntries = true)
     })
     public void deleteTest(UUID testId) {
-        if (!testRepository.existsById(testId)) {
-            throw new RuntimeException("Test not found: " + testId);
-        }
+        IeltsTest test = testRepository.findById(testId)
+                .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
         // DB foreign keys have ON DELETE CASCADE, so just delete the test
         testRepository.deleteById(testId);
+        auditLogService.log(authUtil.getUserId(), "DELETE", "IELTS_TEST", testId, 
+                Map.of("title", test.getTitle()));
     }
 
     // ─── Toggle Publish ──────────────────────────────────────────────────────────
@@ -160,8 +172,12 @@ public class AdminIeltsTestServiceImpl implements AdminIeltsTestService {
     public void togglePublish(UUID testId, boolean published) {
         IeltsTest test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found: " + testId));
+        boolean oldStatus = test.getIsPublished();
         test.setIsPublished(published);
         testRepository.save(test);
+        
+        auditLogService.log(authUtil.getUserId(), "TOGGLE_PUBLISH", "IELTS_TEST", testId, 
+                Map.of("title", test.getTitle(), "oldStatus", oldStatus, "newStatus", published));
     }
 
     // ─── Private helpers ─────────────────────────────────────────────────────────

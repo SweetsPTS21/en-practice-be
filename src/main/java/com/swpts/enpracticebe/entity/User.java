@@ -36,6 +36,13 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private boolean isActive = true;
+
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
