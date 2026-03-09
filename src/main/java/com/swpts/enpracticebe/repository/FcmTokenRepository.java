@@ -14,7 +14,7 @@ import java.util.UUID;
 @Repository
 public interface FcmTokenRepository extends JpaRepository<FcmToken, Long> {
 
-    Optional<FcmToken> findByUserId(UUID userId);
+    List<FcmToken> findByUserId(UUID userId);
 
     List<FcmToken> findByUserIdIn(List<UUID> userIds);
 

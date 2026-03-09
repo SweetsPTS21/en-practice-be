@@ -1,0 +1,124 @@
+package com.swpts.enpracticebe.service.impl;
+
+import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse;
+import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.*;
+import com.swpts.enpracticebe.dto.response.admin.RecentActivityResponse;
+import com.swpts.enpracticebe.dto.response.admin.UserActivityChartResponse;
+import com.swpts.enpracticebe.entity.User;
+import com.swpts.enpracticebe.entity.*;
+import com.swpts.enpracticebe.repository.*;
+import com.swpts.enpracticebe.service.AdminDashboardService;
+import com.swpts.enpracticebe.service.DashboardStatsScheduler;
+import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class AdminDashboardServiceImpl implements AdminDashboardService {
+
+    private final UserRepository userRepository;
+    private final UserActivityLogRepository userActivityLogRepository;
+    private final DashboardDailyStatRepository dashboardDailyStatRepository;
+    private final DashboardStatsScheduler dashboardStatsScheduler;
+
+    @Override
+    @Cacheable(value = "dashboardStats")
+    public DashboardStatsResponse getStats() {
+        Optional<DashboardDailyStat> latestOpt = dashboardDailyStatRepository.findTopByOrderByStatDateDesc();
+        if (latestOpt.isEmpty()) {
+            // Fallback if no stats have been calculated yet
+            return refreshStats();
+        }
+
+        return mapToResponse(latestOpt.get());
+    }
+
+    @Override
+    public DashboardStatsResponse refreshStats() {
+        DashboardDailyStat stat = dashboardStatsScheduler.calculateAndSaveStats(LocalDate.now());
+        return mapToResponse(stat);
+    }
+
+    private DashboardStatsResponse mapToResponse(DashboardDailyStat stat) {
+        return DashboardStatsResponse.builder()
+                .totalUsers(stat.getTotalUsers())
+                .activeUsersToday(stat.getActiveUsersToday())
+                .newUsersThisWeek(stat.getNewUsersThisWeek())
+                .contentStats(ContentStats.builder()
+                        .ieltsTests(ContentCount.builder().total(stat.getTotalIelts()).published(stat.getPublishedIelts()).build())
+                        .speakingTopics(ContentCount.builder().total(stat.getTotalSpeaking()).published(stat.getPublishedSpeaking()).build())
+                        .writingTasks(ContentCount.builder().total(stat.getTotalWriting()).published(stat.getPublishedWriting()).build())
+                        .build())
+                .activityStats(ActivityStats.builder()
+                        .totalAttempts(stat.getTotalAttempts())
+                        .attemptsToday(stat.getAttemptsToday())
+                        .vocabularyRecordsToday(stat.getVocabToday())
+                        .build())
+                .build();
+    }
+
+    @Override
+    @Cacheable(value = "dashboardRecentActivities")
+    public List<RecentActivityResponse> getRecentActivities() {
+        List<UserActivityLog> logs = userActivityLogRepository.findTop20ByOrderByCreatedAtDesc();
+        
+        Set<UUID> userIds = logs.stream().map(UserActivityLog::getUserId).collect(Collectors.toSet());
+        Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        return logs.stream().map(log -> {
+            User user = userMap.get(log.getUserId());
+            return RecentActivityResponse.builder()
+                    .userId(log.getUserId())
+                    .userName(user != null ? user.getDisplayName() : "Unknown")
+                    .activityType(log.getActivityType())
+                    .entityName(log.getEntityName())
+                    .createdAt(log.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    @Cacheable(value = "dashboardUserActivityChart", key = "#days")
+    public List<UserActivityChartResponse> getUserActivityChart(int days) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1);
+        
+        List<DashboardDailyStat> stats = dashboardDailyStatRepository.findByStatDateBetweenOrderByStatDateAsc(startDate, endDate);
+        Map<LocalDate, DashboardDailyStat> statMap = stats.stream()
+                .collect(Collectors.toMap(DashboardDailyStat::getStatDate, s -> s));
+
+        List<UserActivityChartResponse> chart = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
+
+        for (int i = days - 1; i >= 0; i--) {
+            LocalDate date = endDate.minusDays(i);
+            DashboardDailyStat dailyStat = statMap.get(date);
+            
+            if (dailyStat != null) {
+                chart.add(UserActivityChartResponse.builder()
+                        .date(date.format(formatter))
+                        .activeUsers((int) dailyStat.getActiveUsersToday())
+                        .attempts(dailyStat.getAttemptsToday())
+                        .vocabularyRecords(dailyStat.getVocabToday())
+                        .build());
+            } else {
+                // Return 0 if data for this date was not computed by cron job and stats were not manually refreshed
+                chart.add(UserActivityChartResponse.builder()
+                        .date(date.format(formatter))
+                        .activeUsers(0)
+                        .attempts(0L)
+                        .vocabularyRecords(0L)
+                        .build());
+            }
+        }
+
+        return chart;
+    }
+}

@@ -9,6 +9,8 @@ import com.swpts.enpracticebe.entity.WritingTask;
 import com.swpts.enpracticebe.mapper.WritingMapper;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
 import com.swpts.enpracticebe.service.AdminWritingService;
+import com.swpts.enpracticebe.service.AuditLogService;
+import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,8 @@ public class AdminWritingServiceImpl implements AdminWritingService {
 
     private final WritingTaskRepository taskRepository;
     private final WritingMapper writingMapper;
+    private final AuditLogService auditLogService;
+    private final AuthUtil authUtil;
 
     // ─── List Tasks ─────────────────────────────────────────────────────────────
 
@@ -90,6 +95,10 @@ public class AdminWritingServiceImpl implements AdminWritingService {
                 .maxWords(request.getMaxWords())
                 .build();
         task = taskRepository.save(task);
+
+        auditLogService.log(authUtil.getUserId(), "CREATE", "WRITING_TASK", task.getId(), 
+                Map.of("taskType", task.getTaskType().name(), "title", task.getTitle(), "isPublished", task.getIsPublished()));
+
         return writingMapper.toAdminResponse(task);
     }
 
@@ -119,6 +128,9 @@ public class AdminWritingServiceImpl implements AdminWritingService {
         task.setMaxWords(request.getMaxWords());
         task = taskRepository.save(task);
 
+        auditLogService.log(authUtil.getUserId(), "UPDATE", "WRITING_TASK", taskId, 
+                Map.of("taskType", task.getTaskType().name(), "title", task.getTitle(), "isPublished", task.getIsPublished()));
+
         return writingMapper.toAdminResponse(task);
     }
 
@@ -132,10 +144,12 @@ public class AdminWritingServiceImpl implements AdminWritingService {
             @CacheEvict(value = "writingTaskList", allEntries = true)
     })
     public void deleteTask(UUID taskId) {
-        if (!taskRepository.existsById(taskId)) {
-            throw new RuntimeException("Writing task not found: " + taskId);
-        }
+        WritingTask task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Writing task not found: " + taskId));
         taskRepository.deleteById(taskId);
+
+        auditLogService.log(authUtil.getUserId(), "DELETE", "WRITING_TASK", taskId, 
+                Map.of("taskType", task.getTaskType().name(), "title", task.getTitle()));
     }
 
     // ─── Toggle Publish ─────────────────────────────────────────────────────────
@@ -150,8 +164,12 @@ public class AdminWritingServiceImpl implements AdminWritingService {
     public void togglePublish(UUID taskId, boolean published) {
         WritingTask task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Writing task not found: " + taskId));
+        boolean oldStatus = task.getIsPublished();
         task.setIsPublished(published);
         taskRepository.save(task);
+
+        auditLogService.log(authUtil.getUserId(), "TOGGLE_PUBLISH", "WRITING_TASK", taskId, 
+                Map.of("title", task.getTitle(), "oldStatus", oldStatus, "newStatus", published));
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────────

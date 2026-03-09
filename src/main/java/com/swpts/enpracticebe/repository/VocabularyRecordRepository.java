@@ -120,4 +120,9 @@ public interface VocabularyRecordRepository extends JpaRepository<VocabularyReco
     // Find incorrect records within date range
     @Query("SELECT v FROM VocabularyRecord v WHERE v.testedAt BETWEEN :start AND :end AND v.isCorrect = false")
     List<VocabularyRecord> findByTestedAtBetweenAndIsCorrectFalse(@Param("start") Instant start, @Param("end") Instant end);
+
+    // Dashboard queries
+    long countByTestedAtAfter(Instant after);
+
+    long countByTestedAtBetween(Instant start, Instant end);
 }

@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.controller;
+package com.swpts.enpracticebe.controller.admin;
 
 import com.swpts.enpracticebe.dto.request.admin.CreateSpeakingTopicRequest;
 import com.swpts.enpracticebe.dto.request.admin.UpdateSpeakingTopicRequest;

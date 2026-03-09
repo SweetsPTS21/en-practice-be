@@ -26,13 +26,22 @@ public class PushNotificationService {
 
     public String sendNotificationToUserWithData(UUID userId, String title, String body, Map<String, String> data) {
         try {
-            FcmToken fcmToken = fcmTokenRepository.findByUserId(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("No FCM token found for user: " + userId));
+            List<FcmToken> fcmTokens = fcmTokenRepository.findByUserId(userId);
+            if (fcmTokens.isEmpty()) {
+                log.warn("No FCM token found for user: {}", userId);
+                return null;
+            }
+
+            List<String> tokenStrings = fcmTokens.stream()
+                    .map(FcmToken::getToken)
+                    .collect(Collectors.toList());
 
             if (data != null && !data.isEmpty()) {
-                return firebaseMessagingService.sendNotificationWithData(fcmToken.getToken(), title, body, data);
+                BatchResponse response = firebaseMessagingService.sendMulticastNotificationWithData(tokenStrings, title, body, data);
+                return response.getSuccessCount() + " messages were sent successfully";
             } else {
-                return firebaseMessagingService.sendNotification(fcmToken.getToken(), title, body);
+                BatchResponse response = firebaseMessagingService.sendMulticastNotification(tokenStrings, title, body);
+                return response.getSuccessCount() + " messages were sent successfully";
             }
         } catch (Exception e) {
             log.error("Failed to send notification to user: {}", userId, e);

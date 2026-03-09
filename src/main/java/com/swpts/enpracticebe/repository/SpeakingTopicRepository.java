@@ -23,4 +23,6 @@ public interface SpeakingTopicRepository extends JpaRepository<SpeakingTopic, UU
     Page<SpeakingTopic> findByPartAndIsPublishedTrue(SpeakingTopic.Part part, Pageable pageable);
     Page<SpeakingTopic> findByDifficultyAndIsPublishedTrue(SpeakingTopic.Difficulty difficulty, Pageable pageable);
     Page<SpeakingTopic> findByPartAndDifficultyAndIsPublishedTrue(SpeakingTopic.Part part, SpeakingTopic.Difficulty difficulty, Pageable pageable);
+
+    long countByIsPublishedTrue();
 }

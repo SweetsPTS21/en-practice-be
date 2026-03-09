@@ -21,4 +21,6 @@ public interface ReviewSessionRepository extends JpaRepository<ReviewSession, UU
             OFFSET 1 LIMIT 1
             """, nativeQuery = true)
     Optional<ReviewSession> findSecondLatest(@Param("userId") UUID userId);
+
+    long countByUserId(UUID userId);
 }

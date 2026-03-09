@@ -37,4 +37,6 @@ public interface IeltsTestRepository extends JpaRepository<IeltsTest, UUID> {
 
     Page<IeltsTest> findBySkillAndDifficultyAndIsPublished(
             IeltsTest.Skill skill, IeltsTest.Difficulty difficulty, Boolean isPublished, Pageable pageable);
+
+    long countByIsPublishedTrue();
 }

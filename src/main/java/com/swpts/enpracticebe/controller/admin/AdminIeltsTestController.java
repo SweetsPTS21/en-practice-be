@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.controller;
+package com.swpts.enpracticebe.controller.admin;
 
 import com.swpts.enpracticebe.dto.request.admin.AdminIeltsTestFilterRequest;
 import com.swpts.enpracticebe.dto.request.admin.CreateIeltsTestRequest;

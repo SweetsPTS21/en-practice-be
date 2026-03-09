@@ -9,6 +9,8 @@ import com.swpts.enpracticebe.entity.SpeakingTopic;
 import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.AdminSpeakingService;
+import com.swpts.enpracticebe.service.AuditLogService;
+import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.AllArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,8 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
 
     private final SpeakingTopicRepository topicRepository;
     private final SpeakingMapper speakingMapper;
+    private final AuditLogService auditLogService;
+    private final AuthUtil authUtil;
 
     @Override
     @Cacheable(value = "adminSpeakingTopicList",
@@ -81,6 +86,10 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
                 .isPublished(request.getIsPublished())
                 .build();
         topic = topicRepository.save(topic);
+
+        auditLogService.log(authUtil.getUserId(), "CREATE", "SPEAKING_TOPIC", topic.getId(), 
+                Map.of("part", topic.getPart().name(), "question", topic.getQuestion(), "isPublished", topic.getIsPublished()));
+
         return speakingMapper.toAdminResponse(topic);
     }
 
@@ -104,6 +113,9 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
         topic.setIsPublished(request.getIsPublished());
         topic = topicRepository.save(topic);
 
+        auditLogService.log(authUtil.getUserId(), "UPDATE", "SPEAKING_TOPIC", topicId, 
+                Map.of("part", topic.getPart().name(), "question", topic.getQuestion(), "isPublished", topic.getIsPublished()));
+
         return speakingMapper.toAdminResponse(topic);
     }
 
@@ -115,10 +127,12 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
             @CacheEvict(value = "speakingTopicList", allEntries = true)
     })
     public void deleteTopic(UUID topicId) {
-        if (!topicRepository.existsById(topicId)) {
-            throw new RuntimeException("Speaking topic not found: " + topicId);
-        }
+        SpeakingTopic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
         topicRepository.deleteById(topicId);
+        
+        auditLogService.log(authUtil.getUserId(), "DELETE", "SPEAKING_TOPIC", topicId, 
+                Map.of("part", topic.getPart().name(), "question", topic.getQuestion()));
     }
 
     @Override
@@ -131,8 +145,12 @@ public class AdminSpeakingServiceImpl implements AdminSpeakingService {
     public void togglePublish(UUID topicId, boolean published) {
         SpeakingTopic topic = topicRepository.findById(topicId)
                 .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
+        boolean oldStatus = topic.getIsPublished();
         topic.setIsPublished(published);
         topicRepository.save(topic);
+
+        auditLogService.log(authUtil.getUserId(), "TOGGLE_PUBLISH", "SPEAKING_TOPIC", topicId, 
+                Map.of("question", topic.getQuestion(), "oldStatus", oldStatus, "newStatus", published));
     }
 
     // ─── Private helpers ────────────────────────────────────────────────────────
