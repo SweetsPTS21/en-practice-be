@@ -11,8 +11,6 @@ import com.swpts.enpracticebe.service.AdminDashboardService;
 import com.swpts.enpracticebe.service.DashboardStatsScheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -25,10 +23,7 @@ import java.util.stream.Collectors;
 public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private final UserRepository userRepository;
-    private final IeltsTestAttemptRepository ieltsTestAttemptRepository;
-    private final SpeakingAttemptRepository speakingAttemptRepository;
-    private final WritingSubmissionRepository writingSubmissionRepository;
-    private final VocabularyRecordRepository vocabularyRecordRepository;
+    private final UserActivityLogRepository userActivityLogRepository;
     private final DashboardDailyStatRepository dashboardDailyStatRepository;
     private final DashboardStatsScheduler dashboardStatsScheduler;
 
@@ -71,90 +66,57 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Override
     @Cacheable(value = "dashboardRecentActivities")
     public List<RecentActivityResponse> getRecentActivities() {
-        List<RecentActivityResponse> activities = new ArrayList<>();
+        List<UserActivityLog> logs = userActivityLogRepository.findTop20ByOrderByCreatedAtDesc();
+        
+        Set<UUID> userIds = logs.stream().map(UserActivityLog::getUserId).collect(Collectors.toSet());
+        Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
-        // Fetch last 20 from each source, then merge and take top 20
-        PageRequest top20 = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "startedAt"));
-        ieltsTestAttemptRepository.findAll(top20).forEach(attempt -> {
-            User user = userRepository.findById(attempt.getUserId()).orElse(null);
-            activities.add(RecentActivityResponse.builder()
-                    .userId(attempt.getUserId())
+        return logs.stream().map(log -> {
+            User user = userMap.get(log.getUserId());
+            return RecentActivityResponse.builder()
+                    .userId(log.getUserId())
                     .userName(user != null ? user.getDisplayName() : "Unknown")
-                    .activityType("IELTS_ATTEMPT")
-                    .entityName("IELTS Test Attempt")
-                    .createdAt(attempt.getStartedAt())
-                    .build());
-        });
-
-        speakingAttemptRepository.findAll(
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "submittedAt"))
-        ).forEach(attempt -> {
-            User user = userRepository.findById(attempt.getUserId()).orElse(null);
-            activities.add(RecentActivityResponse.builder()
-                    .userId(attempt.getUserId())
-                    .userName(user != null ? user.getDisplayName() : "Unknown")
-                    .activityType("SPEAKING_ATTEMPT")
-                    .entityName("Speaking Attempt")
-                    .createdAt(attempt.getSubmittedAt())
-                    .build());
-        });
-
-        writingSubmissionRepository.findAll(
-                PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "submittedAt"))
-        ).forEach(sub -> {
-            User user = userRepository.findById(sub.getUserId()).orElse(null);
-            activities.add(RecentActivityResponse.builder()
-                    .userId(sub.getUserId())
-                    .userName(user != null ? user.getDisplayName() : "Unknown")
-                    .activityType("WRITING_SUBMISSION")
-                    .entityName("Writing Submission")
-                    .createdAt(sub.getSubmittedAt())
-                    .build());
-        });
-
-        // Sort by createdAt DESC and take top 20
-        activities.sort((a, b) -> {
-            if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
-            if (a.getCreatedAt() == null) return 1;
-            if (b.getCreatedAt() == null) return -1;
-            return b.getCreatedAt().compareTo(a.getCreatedAt());
-        });
-
-        return activities.stream().limit(20).collect(Collectors.toList());
+                    .activityType(log.getActivityType())
+                    .entityName(log.getEntityName())
+                    .createdAt(log.getCreatedAt())
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     @Override
     @Cacheable(value = "dashboardUserActivityChart", key = "#days")
     public List<UserActivityChartResponse> getUserActivityChart(int days) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1);
+        
+        List<DashboardDailyStat> stats = dashboardDailyStatRepository.findByStatDateBetweenOrderByStatDateAsc(startDate, endDate);
+        Map<LocalDate, DashboardDailyStat> statMap = stats.stream()
+                .collect(Collectors.toMap(DashboardDailyStat::getStatDate, s -> s));
+
         List<UserActivityChartResponse> chart = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM");
 
         for (int i = days - 1; i >= 0; i--) {
-            LocalDate date = LocalDate.now().minusDays(i);
-            Instant dayStart = date.atStartOfDay(ZoneOffset.UTC).toInstant();
-            Instant dayEnd = date.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-
-            // Count distinct active users on this day
-            Set<UUID> activeUserIds = new HashSet<>();
-            ieltsTestAttemptRepository.findByStartedAtBetween(dayStart, dayEnd)
-                    .forEach(a -> activeUserIds.add(a.getUserId()));
-            speakingAttemptRepository.findBySubmittedAtBetween(dayStart, dayEnd)
-                    .forEach(a -> activeUserIds.add(a.getUserId()));
-            writingSubmissionRepository.findBySubmittedAtBetween(dayStart, dayEnd)
-                    .forEach(a -> activeUserIds.add(a.getUserId()));
-
-            long attempts = ieltsTestAttemptRepository.countByStartedAtBetween(dayStart, dayEnd)
-                    + speakingAttemptRepository.countBySubmittedAtBetween(dayStart, dayEnd)
-                    + writingSubmissionRepository.countBySubmittedAtBetween(dayStart, dayEnd);
-
-            long vocabRecords = vocabularyRecordRepository.countByTestedAtBetween(dayStart, dayEnd);
-
-            chart.add(UserActivityChartResponse.builder()
-                    .date(date.format(formatter))
-                    .activeUsers(activeUserIds.size())
-                    .attempts(attempts)
-                    .vocabularyRecords(vocabRecords)
-                    .build());
+            LocalDate date = endDate.minusDays(i);
+            DashboardDailyStat dailyStat = statMap.get(date);
+            
+            if (dailyStat != null) {
+                chart.add(UserActivityChartResponse.builder()
+                        .date(date.format(formatter))
+                        .activeUsers((int) dailyStat.getActiveUsersToday())
+                        .attempts(dailyStat.getAttemptsToday())
+                        .vocabularyRecords(dailyStat.getVocabToday())
+                        .build());
+            } else {
+                // Return 0 if data for this date was not computed by cron job and stats were not manually refreshed
+                chart.add(UserActivityChartResponse.builder()
+                        .date(date.format(formatter))
+                        .activeUsers(0)
+                        .attempts(0L)
+                        .vocabularyRecords(0L)
+                        .build());
+            }
         }
 
         return chart;

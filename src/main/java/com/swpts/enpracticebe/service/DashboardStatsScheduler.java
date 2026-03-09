@@ -52,12 +52,9 @@ public class DashboardStatsScheduler {
 
         // Count distinct users who had any activity on the given date
         Set<UUID> activeUserIds = new HashSet<>();
-        ieltsTestAttemptRepository.findByStartedAtBetween(startOfDay, endOfDay)
-                .forEach(a -> activeUserIds.add(a.getUserId()));
-        speakingAttemptRepository.findBySubmittedAtBetween(startOfDay, endOfDay)
-                .forEach(a -> activeUserIds.add(a.getUserId()));
-        writingSubmissionRepository.findBySubmittedAtBetween(startOfDay, endOfDay)
-                .forEach(a -> activeUserIds.add(a.getUserId()));
+        activeUserIds.addAll(ieltsTestAttemptRepository.findUserIdsByStartedAtBetween(startOfDay, endOfDay));
+        activeUserIds.addAll(speakingAttemptRepository.findUserIdsBySubmittedAtBetween(startOfDay, endOfDay));
+        activeUserIds.addAll(writingSubmissionRepository.findUserIdsBySubmittedAtBetween(startOfDay, endOfDay));
 
         long ieltsTotal = ieltsTestRepository.count();
         long ieltsPublished = ieltsTestRepository.countByIsPublishedTrue();

@@ -20,6 +20,9 @@ public interface SpeakingAttemptRepository extends JpaRepository<SpeakingAttempt
 
     List<SpeakingAttempt> findBySubmittedAtBetween(Instant start, Instant end);
 
+    @org.springframework.data.jpa.repository.Query("SELECT a.userId FROM SpeakingAttempt a WHERE a.submittedAt BETWEEN :start AND :end")
+    List<UUID> findUserIdsBySubmittedAtBetween(@org.springframework.data.repository.query.Param("start") Instant start, @org.springframework.data.repository.query.Param("end") Instant end);
+
     long countBySubmittedAtBetween(Instant start, Instant end);
 
     long countByUserId(UUID userId);

@@ -12,6 +12,7 @@ import com.swpts.enpracticebe.mapper.WritingMapper;
 import com.swpts.enpracticebe.repository.WritingSubmissionRepository;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
 import com.swpts.enpracticebe.service.WritingService;
+import com.swpts.enpracticebe.service.UserActivityLogService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class WritingServiceImpl implements WritingService {
     private final WritingGradingService gradingService;
     private final WritingMapper writingMapper;
     private final AuthUtil authUtil;
+    private final UserActivityLogService userActivityLogService;
 
     // ─── List Writing Tasks (published only) ────────────────────────────────────
 
@@ -108,6 +110,8 @@ public class WritingServiceImpl implements WritingService {
                 .status(WritingSubmission.SubmissionStatus.SUBMITTED)
                 .build();
         submission = submissionRepository.save(submission);
+
+        userActivityLogService.logActivity(userId, "WRITING_SUBMISSION", submission.getId(), task.getTitle());
 
         // Delegate to separate bean AFTER transaction commits,
         // so the submission is visible in DB when the async thread reads it

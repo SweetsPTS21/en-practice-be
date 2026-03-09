@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.google.firebase.messaging.BatchResponse;
 import com.swpts.enpracticebe.dto.request.admin.SendNotificationRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.admin.NotificationHistoryResponse;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,7 +44,7 @@ public class AdminNotificationServiceImpl implements AdminNotificationService {
             targets = userRepository.findByRole(targetRole).stream().filter(User::isActive).collect(Collectors.toList());
         }
 
-        List<java.util.UUID> userIds = targets.stream()
+        List<UUID> userIds = targets.stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
 
@@ -50,7 +52,7 @@ public class AdminNotificationServiceImpl implements AdminNotificationService {
         if (!userIds.isEmpty()) {
             try {
                 // Let the push notification service handle multicast
-                com.google.firebase.messaging.BatchResponse response = pushNotificationService.sendNotificationToUsers(
+                BatchResponse response = pushNotificationService.sendNotificationToUsers(
                     userIds, request.getTitle(), request.getBody());
                 successCount = response != null ? response.getSuccessCount() : 0;
             } catch (Exception e) {

@@ -5,7 +5,9 @@ import com.swpts.enpracticebe.dto.request.admin.UserFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.admin.AdminUserDetailResponse;
 import com.swpts.enpracticebe.dto.response.admin.AdminUserListResponse;
+import com.swpts.enpracticebe.dto.response.admin.RecentActivityResponse;
 import com.swpts.enpracticebe.entity.User;
+import com.swpts.enpracticebe.entity.UserActivityLog;
 import com.swpts.enpracticebe.repository.*;
 import com.swpts.enpracticebe.service.AdminUserService;
 import jakarta.persistence.criteria.Predicate;
@@ -35,6 +37,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final WritingSubmissionRepository writingSubmissionRepository;
     private final VocabularyRecordRepository vocabularyRecordRepository;
     private final ReviewSessionRepository reviewSessionRepository;
+    private final UserActivityLogRepository userActivityLogRepository;
 
     @Override
     @Cacheable(value = "adminUserList", key = "#filter.page + '-' + #filter.size + '-' + #filter.search + '-' + #filter.role + '-' + #filter.isActive")
@@ -107,6 +110,33 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .totalWritingSubmissions(writingSubmissions)
                 .totalVocabularyRecords(vocabRecords)
                 .totalReviewSessions(reviewSessions)
+                .build();
+    }
+
+    @Override
+    public PageResponse<RecentActivityResponse> getUserActivities(UUID userId, int page, int size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Page<UserActivityLog> logPage = userActivityLogRepository.findByUserIdOrderByCreatedAtDesc(
+                userId, PageRequest.of(page, size));
+
+        List<RecentActivityResponse> items = logPage.getContent().stream()
+                .map(log -> RecentActivityResponse.builder()
+                        .userId(log.getUserId())
+                        .userName(user.getDisplayName())
+                        .activityType(log.getActivityType())
+                        .entityName(log.getEntityName())
+                        .createdAt(log.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return PageResponse.<RecentActivityResponse>builder()
+                .page(logPage.getNumber())
+                .size(logPage.getSize())
+                .totalElements(logPage.getTotalElements())
+                .totalPages(logPage.getTotalPages())
+                .items(items)
                 .build();
     }
 

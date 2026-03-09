@@ -12,6 +12,7 @@ import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingAttemptRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.SpeakingService;
+import com.swpts.enpracticebe.service.UserActivityLogService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ public class SpeakingServiceImpl implements SpeakingService {
     private final SpeakingGradingService gradingService;
     private final AuthUtil authUtil;
     private final SpeakingMapper speakingMapper;
+    private final UserActivityLogService userActivityLogService;
 
     @Override
     public PageResponse<SpeakingTopicListResponse> getTopics(SpeakingTopicFilterRequest request) {
@@ -100,6 +102,13 @@ public class SpeakingServiceImpl implements SpeakingService {
                 .status(SpeakingAttempt.AttemptStatus.SUBMITTED)
                 .build();
         attempt = attemptRepository.save(attempt);
+
+        // take the first 100 characters of the question as the entity name since Speaking topics don't have titles
+        String entityName = topic.getQuestion();
+        if (entityName != null && entityName.length() > 100) {
+            entityName = entityName.substring(0, 97) + "...";
+        }
+        userActivityLogService.logActivity(userId, "SPEAKING_ATTEMPT", attempt.getId(), entityName);
 
         final UUID attemptId = attempt.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

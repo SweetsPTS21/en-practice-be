@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.controller;
+package com.swpts.enpracticebe.controller.admin;
 
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse;

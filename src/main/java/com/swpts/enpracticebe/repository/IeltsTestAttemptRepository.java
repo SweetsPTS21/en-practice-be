@@ -22,6 +22,9 @@ public interface IeltsTestAttemptRepository extends JpaRepository<IeltsTestAttem
 
     List<IeltsTestAttempt> findByStartedAtBetween(Instant start, Instant end);
 
+    @org.springframework.data.jpa.repository.Query("SELECT a.userId FROM IeltsTestAttempt a WHERE a.startedAt BETWEEN :start AND :end")
+    List<UUID> findUserIdsByStartedAtBetween(@org.springframework.data.repository.query.Param("start") Instant start, @org.springframework.data.repository.query.Param("end") Instant end);
+
     long countByStartedAtBetween(Instant start, Instant end);
 
     long countByUserId(UUID userId);

@@ -1,10 +1,11 @@
-package com.swpts.enpracticebe.controller;
+package com.swpts.enpracticebe.controller.admin;
 
 import com.swpts.enpracticebe.dto.request.admin.UserFilterRequest;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.admin.AdminUserDetailResponse;
 import com.swpts.enpracticebe.dto.response.admin.AdminUserListResponse;
+import com.swpts.enpracticebe.dto.response.admin.RecentActivityResponse;
 import com.swpts.enpracticebe.service.AdminUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,15 @@ public class AdminUserController {
     public ResponseEntity<DefaultResponse<AdminUserDetailResponse>> getUserDetail(
             @PathVariable UUID id) {
         AdminUserDetailResponse result = adminUserService.getUserDetail(id);
+        return ResponseEntity.ok(DefaultResponse.success(result));
+    }
+
+    @GetMapping("/{id}/activities")
+    public ResponseEntity<DefaultResponse<PageResponse<RecentActivityResponse>>> getUserActivities(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        PageResponse<RecentActivityResponse> result = adminUserService.getUserActivities(id, page, size);
         return ResponseEntity.ok(DefaultResponse.success(result));
     }
 

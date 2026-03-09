@@ -12,4 +12,6 @@ public interface DashboardDailyStatRepository extends JpaRepository<DashboardDai
     Optional<DashboardDailyStat> findByStatDate(LocalDate statDate);
 
     Optional<DashboardDailyStat> findTopByOrderByStatDateDesc();
+
+    java.util.List<DashboardDailyStat> findByStatDateBetweenOrderByStatDateAsc(LocalDate startDate, LocalDate endDate);
 }
