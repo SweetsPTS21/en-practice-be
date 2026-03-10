@@ -3,6 +3,7 @@ package com.swpts.enpracticebe.repository;
 import com.swpts.enpracticebe.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,4 +19,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     long countByCreatedAtAfter(Instant after);
 
     List<User> findByRole(com.swpts.enpracticebe.constant.Role role);
+
+    @Query("SELECT u.id FROM User u WHERE u.role = 'USER'")
+    List<UUID> findAllActiveUserIds();
 }

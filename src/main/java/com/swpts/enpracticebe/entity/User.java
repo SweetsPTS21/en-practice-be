@@ -43,6 +43,10 @@ public class User {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "total_xp", nullable = false)
+    @Builder.Default
+    private Integer totalXp = 0;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 

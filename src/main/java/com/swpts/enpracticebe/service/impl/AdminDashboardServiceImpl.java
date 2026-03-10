@@ -1,19 +1,24 @@
 package com.swpts.enpracticebe.service.impl;
 
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse;
-import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.*;
+import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.ActivityStats;
+import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.ContentCount;
+import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.ContentStats;
 import com.swpts.enpracticebe.dto.response.admin.RecentActivityResponse;
 import com.swpts.enpracticebe.dto.response.admin.UserActivityChartResponse;
+import com.swpts.enpracticebe.entity.DashboardDailyStat;
 import com.swpts.enpracticebe.entity.User;
-import com.swpts.enpracticebe.entity.*;
-import com.swpts.enpracticebe.repository.*;
+import com.swpts.enpracticebe.entity.UserActivityLog;
+import com.swpts.enpracticebe.repository.DashboardDailyStatRepository;
+import com.swpts.enpracticebe.repository.UserActivityLogRepository;
+import com.swpts.enpracticebe.repository.UserRepository;
+import com.swpts.enpracticebe.scheduler.DashboardStatsScheduler;
 import com.swpts.enpracticebe.service.AdminDashboardService;
-import com.swpts.enpracticebe.service.DashboardStatsScheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -67,7 +72,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     @Cacheable(value = "dashboardRecentActivities")
     public List<RecentActivityResponse> getRecentActivities() {
         List<UserActivityLog> logs = userActivityLogRepository.findTop20ByOrderByCreatedAtDesc();
-        
+
         Set<UUID> userIds = logs.stream().map(UserActivityLog::getUserId).collect(Collectors.toSet());
         Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
@@ -89,7 +94,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     public List<UserActivityChartResponse> getUserActivityChart(int days) {
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(days - 1);
-        
+
         List<DashboardDailyStat> stats = dashboardDailyStatRepository.findByStatDateBetweenOrderByStatDateAsc(startDate, endDate);
         Map<LocalDate, DashboardDailyStat> statMap = stats.stream()
                 .collect(Collectors.toMap(DashboardDailyStat::getStatDate, s -> s));
@@ -100,7 +105,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         for (int i = days - 1; i >= 0; i--) {
             LocalDate date = endDate.minusDays(i);
             DashboardDailyStat dailyStat = statMap.get(date);
-            
+
             if (dailyStat != null) {
                 chart.add(UserActivityChartResponse.builder()
                         .date(date.format(formatter))

@@ -1,0 +1,15 @@
+package com.swpts.enpracticebe.constant;
+
+public enum XpSource {
+    DAILY_TASK_COMPLETE,
+    ALL_DAILY_TASKS_BONUS,
+    STREAK_BONUS,
+    FULL_TEST_COMPLETE,
+    MINI_TEST_COMPLETE,
+    VOCABULARY_REVIEW,
+    QUICK_PRACTICE,
+    SPEAKING_PRACTICE,
+    WRITING_SUBMISSION,
+    BAND_INCREASE,
+    WEEKLY_REWARD
+}

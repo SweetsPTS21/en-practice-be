@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.service;
+package com.swpts.enpracticebe.scheduler;
 
 import com.swpts.enpracticebe.entity.DashboardDailyStat;
 import com.swpts.enpracticebe.entity.UserWeeklyReport;
@@ -49,21 +49,21 @@ public class DashboardStatsScheduler {
         Instant startOfWeek = LocalDate.now(ZoneOffset.UTC)
                 .with(java.time.DayOfWeek.MONDAY)
                 .atStartOfDay(ZoneOffset.UTC).toInstant();
-        
+
         userRepository.findAll().forEach(user -> {
             int studyMinutes = 0; // In reality, fetch sum time spent from attempts
             int vocabLearned = (int) vocabularyRecordRepository.countByUserIdAndTestedAtAfter(user.getId(), startOfWeek);
             int tests = ieltsTestAttemptRepository.findByUserIdAndStartedAtBetween(user.getId(), startOfWeek, endOfWeek).size();
-            
+
             UserWeeklyReport report = UserWeeklyReport.builder()
-                .userId(user.getId())
-                .weekStart(startOfWeek)
-                .weekEnd(endOfWeek)
-                .studyMinutes(studyMinutes)
-                .vocabularyLearned(vocabLearned)
-                .testsCompleted(tests)
-                .bandImprovement(0.0f) // Mock band improvement for MVP
-                .build();
+                    .userId(user.getId())
+                    .weekStart(startOfWeek)
+                    .weekEnd(endOfWeek)
+                    .studyMinutes(studyMinutes)
+                    .vocabularyLearned(vocabLearned)
+                    .testsCompleted(tests)
+                    .bandImprovement(0.0f) // Mock band improvement for MVP
+                    .build();
             userWeeklyReportRepository.save(report);
         });
         log.info("Weekly reports generation completed.");

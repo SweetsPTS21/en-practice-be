@@ -12,6 +12,8 @@ import com.swpts.enpracticebe.repository.ReviewSessionRepository;
 import com.swpts.enpracticebe.repository.VocabularyRecordRepository;
 import com.swpts.enpracticebe.service.RecordService;
 import com.swpts.enpracticebe.util.AuthUtil;
+import com.swpts.enpracticebe.constant.XpSource;
+import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.DateUtil;
 import com.swpts.enpracticebe.util.JsonUtil;
 import lombok.AllArgsConstructor;
@@ -36,6 +38,7 @@ public class RecordServiceImpl implements RecordService {
     private final ReviewSessionRepository reviewSessionRepository;
     private final VocabularyRecordMapper vocabularyRecordMapper;
     private final AuthUtil authUtil;
+    private final XpService xpService;
 
     @Override
     public PageResponse<VocabularyRecordResponse> getAllRecords(ListRecordRequest request) {
@@ -66,7 +69,15 @@ public class RecordServiceImpl implements RecordService {
                 .synonyms(request.getSynonyms())
                 .isCorrect(request.getIsCorrect())
                 .build();
-        return vocabularyRecordMapper.entityToDto(recordRepository.save(record));
+        
+        VocabularyRecord saved = recordRepository.save(record);
+        
+        long totalRecords = recordRepository.countAllUniqueWords(userId);
+        if (totalRecords > 0 && totalRecords % 10 == 0) {
+            xpService.earnXp(userId, XpSource.VOCABULARY_REVIEW, saved.getId().toString(), 5);
+        }
+        
+        return vocabularyRecordMapper.entityToDto(saved);
     }
 
     @Override
