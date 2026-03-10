@@ -23,14 +23,15 @@ public class CacheConfig {
             "presignUrl", "ieltsTestDetail", "adminIeltsTestList", "ieltsTestList",
             "adminWritingTaskList", "writingTaskDetail", "writingTaskList",
             "adminSpeakingTopicList", "speakingTopicDetail", "speakingTopicList",
-            "adminUserList", "adminUserDetail", "adminAuditLogList", "userWeakSkills"
+            "adminUserList", "adminUserDetail", "adminAuditLogList", "userWeakSkills", "xpHistory"
     };
 
     /**
      * Short-lived caches (5 min) — real-time dashboard data
      */
     private static final String[] SHORT_TTL_CACHES = {
-            "dashboardStats", "dashboardRecentActivities", "dashboardUserActivityChart"
+            "dashboardStats", "dashboardRecentActivities", "dashboardUserActivityChart",
+            "leaderboardPage", "leaderboardSummary", "userRank"
     };
 
     @Bean

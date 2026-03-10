@@ -13,6 +13,8 @@ import com.swpts.enpracticebe.repository.SpeakingAttemptRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.SpeakingService;
 import com.swpts.enpracticebe.service.UserActivityLogService;
+import com.swpts.enpracticebe.constant.XpSource;
+import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class SpeakingServiceImpl implements SpeakingService {
     private final AuthUtil authUtil;
     private final SpeakingMapper speakingMapper;
     private final UserActivityLogService userActivityLogService;
+    private final XpService xpService;
 
     @Override
     public PageResponse<SpeakingTopicListResponse> getTopics(SpeakingTopicFilterRequest request) {
@@ -117,6 +120,8 @@ public class SpeakingServiceImpl implements SpeakingService {
                 gradingService.gradeAttemptAsync(attemptId, userId);
             }
         });
+
+        xpService.earnXp(userId, XpSource.SPEAKING_PRACTICE, attemptId.toString(), 12);
 
         return speakingMapper.toAttemptResponse(attempt, topic);
     }

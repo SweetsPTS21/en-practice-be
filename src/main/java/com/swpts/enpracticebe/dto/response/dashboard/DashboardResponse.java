@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import com.swpts.enpracticebe.dto.response.leaderboard.LeaderboardSummaryResponse;
+
 import java.util.List;
 
 @Data
@@ -21,4 +23,5 @@ public class DashboardResponse {
     private List<String> weakSkills;
     private List<RecommendedPractice> recommendedPractice;
     private SmartReminder smartReminder;
+    private LeaderboardSummaryResponse leaderboardSummary;
 }

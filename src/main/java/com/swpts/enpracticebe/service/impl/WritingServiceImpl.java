@@ -13,6 +13,8 @@ import com.swpts.enpracticebe.repository.WritingSubmissionRepository;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
 import com.swpts.enpracticebe.service.WritingService;
 import com.swpts.enpracticebe.service.UserActivityLogService;
+import com.swpts.enpracticebe.constant.XpSource;
+import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class WritingServiceImpl implements WritingService {
     private final WritingMapper writingMapper;
     private final AuthUtil authUtil;
     private final UserActivityLogService userActivityLogService;
+    private final XpService xpService;
 
     // ─── List Writing Tasks (published only) ────────────────────────────────────
 
@@ -122,6 +125,8 @@ public class WritingServiceImpl implements WritingService {
                 gradingService.gradeEssayAsync(submissionId, userId);
             }
         });
+
+        xpService.earnXp(userId, XpSource.WRITING_SUBMISSION, submissionId.toString(), 15);
 
         return writingMapper.toSubmissionResponse(submission, task);
     }

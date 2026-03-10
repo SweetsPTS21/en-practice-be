@@ -17,6 +17,8 @@ import com.swpts.enpracticebe.repository.IeltsTestAttemptRepository;
 import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.IeltsTestService;
 import com.swpts.enpracticebe.service.UserActivityLogService;
+import com.swpts.enpracticebe.constant.XpSource;
+import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -41,6 +43,7 @@ public class IeltsTestServiceImpl implements IeltsTestService {
     private final IeltsMapper ieltsMapper;
     private final AuthUtil authUtil;
     private final UserActivityLogService userActivityLogService;
+    private final XpService xpService;
 
     // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -188,6 +191,8 @@ public class IeltsTestServiceImpl implements IeltsTestService {
         if (test != null) {
             userActivityLogService.logActivity(userId, "IELTS_ATTEMPT", attempt.getId(), test.getTitle());
         }
+
+        xpService.earnXp(userId, XpSource.FULL_TEST_COMPLETE, attempt.getId().toString(), 50);
 
         return SubmitTestResponse.builder()
                 .attemptId(attempt.getId())

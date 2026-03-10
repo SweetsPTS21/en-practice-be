@@ -24,4 +24,8 @@ public class Constants {
             {4, 30}, // 4-5 → 3.0
             {0, 25}, // 0-3 → 2.5
     };
+
+    // Leaderboard & XP
+    public static final int MAX_DAILY_XP = 300;
+    public static final int REPEAT_XP_PENALTY_PERCENT = 50;
 }

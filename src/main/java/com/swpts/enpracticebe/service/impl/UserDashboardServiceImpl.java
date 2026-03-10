@@ -5,6 +5,11 @@ import com.swpts.enpracticebe.entity.*;
 import com.swpts.enpracticebe.repository.*;
 import com.swpts.enpracticebe.service.UserDashboardService;
 import com.swpts.enpracticebe.service.UserStatsAggregatorService;
+import com.swpts.enpracticebe.service.LeaderboardService;
+import com.swpts.enpracticebe.service.XpService;
+import com.swpts.enpracticebe.constant.XpSource;
+import com.swpts.enpracticebe.constant.LeaderboardPeriod;
+import com.swpts.enpracticebe.dto.response.leaderboard.LeaderboardSummaryResponse;
 import com.swpts.enpracticebe.util.AuthUtil;
 import com.swpts.enpracticebe.util.DateUtil;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +31,8 @@ public class UserDashboardServiceImpl implements UserDashboardService {
     private final SpeakingAttemptRepository speakingAttemptRepository;
     private final WritingSubmissionRepository writingSubmissionRepository;
     private final UserStatsAggregatorService userStatsAggregatorService;
+    private final LeaderboardService leaderboardService;
+    private final XpService xpService;
 
     @Override
     public DashboardResponse getDashboard() {
@@ -41,7 +48,9 @@ public class UserDashboardServiceImpl implements UserDashboardService {
         CompletableFuture<List<QuickPracticeItem>> quickFuture = CompletableFuture.supplyAsync(this::generateQuickPractice);
         CompletableFuture<List<String>> weakSkillsFuture = CompletableFuture.supplyAsync(() -> userStatsAggregatorService.getWeakSkills(userId));
 
-        CompletableFuture.allOf(streakFuture, goalFuture, tasksFuture, progressFuture, recentFuture, quickFuture, weakSkillsFuture).join();
+        CompletableFuture<LeaderboardSummaryResponse> leaderboardFuture = CompletableFuture.supplyAsync(() -> leaderboardService.getLeaderboardSummary(userId, LeaderboardPeriod.WEEKLY));
+
+        CompletableFuture.allOf(streakFuture, goalFuture, tasksFuture, progressFuture, recentFuture, quickFuture, weakSkillsFuture, leaderboardFuture).join();
 
         List<String> weakSkills = weakSkillsFuture.join();
         List<RecommendedPractice> recommendedPractice = userStatsAggregatorService.getRecommendedPractice(weakSkills);
@@ -69,6 +78,7 @@ public class UserDashboardServiceImpl implements UserDashboardService {
                 .weakSkills(weakSkills)
                 .recommendedPractice(recommendedPractice)
                 .smartReminder(smartReminder)
+                .leaderboardSummary(leaderboardFuture.join())
                 .build();
     }
 
@@ -154,16 +164,19 @@ public class UserDashboardServiceImpl implements UserDashboardService {
 
         // 1. Vocabulary Review
         long vocabCount = vocabularyRecordRepository.countByUserIdAndTestedAtAfter(userId, start);
+        boolean vocabCompleted = vocabCount >= 20;
+        if (vocabCompleted) xpService.earnXp(userId, XpSource.DAILY_TASK_COMPLETE, "t1-" + start.toString(), 10);
         tasks.add(DailyTask.builder()
                 .id("t1")
                 .title("Review 20 vocabulary")
                 .description("Learn or review 20 words")
-                .completed(vocabCount >= 20)
+                .completed(vocabCompleted)
                 .type("VOCAB")
                 .build());
 
         // 2. Listening Practice
         boolean hasIelts = ieltsTestAttemptRepository.existsByUserIdAndStartedAtBetween(userId, start, end);
+        if (hasIelts) xpService.earnXp(userId, XpSource.DAILY_TASK_COMPLETE, "t2-" + start.toString(), 10);
         tasks.add(DailyTask.builder()
                 .id("t2")
                 .title("Listening mini test")
@@ -174,6 +187,7 @@ public class UserDashboardServiceImpl implements UserDashboardService {
 
         // 3. Speaking Practice
         boolean hasSpeaking = speakingAttemptRepository.existsByUserIdAndSubmittedAtBetween(userId, start, end);
+        if (hasSpeaking) xpService.earnXp(userId, XpSource.DAILY_TASK_COMPLETE, "t3-" + start.toString(), 10);
         tasks.add(DailyTask.builder()
                 .id("t3")
                 .title("Speaking question")
@@ -184,6 +198,7 @@ public class UserDashboardServiceImpl implements UserDashboardService {
 
         // 4. Writing Practice
         boolean hasWriting = writingSubmissionRepository.existsByUserIdAndSubmittedAtBetween(userId, start, end);
+        if (hasWriting) xpService.earnXp(userId, XpSource.DAILY_TASK_COMPLETE, "t4-" + start.toString(), 10);
         tasks.add(DailyTask.builder()
                 .id("t4")
                 .title("Writing task")
@@ -191,6 +206,10 @@ public class UserDashboardServiceImpl implements UserDashboardService {
                 .completed(hasWriting)
                 .type("WRITING")
                 .build());
+
+        if (vocabCompleted && hasIelts && hasSpeaking && hasWriting) {
+            xpService.earnXp(userId, XpSource.ALL_DAILY_TASKS_BONUS, "all-" + start.toString(), 20);
+        }
 
         return tasks;
     }
