@@ -1,10 +1,11 @@
-package com.swpts.enpracticebe.service;
+package com.swpts.enpracticebe.scheduler;
 
 import com.swpts.enpracticebe.constant.LeaderboardPeriod;
 import com.swpts.enpracticebe.constant.LeaderboardScope;
 import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.entity.LeaderboardSnapshot;
 import com.swpts.enpracticebe.repository.LeaderboardSnapshotRepository;
+import com.swpts.enpracticebe.service.XpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

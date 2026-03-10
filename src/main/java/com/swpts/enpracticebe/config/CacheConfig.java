@@ -23,7 +23,8 @@ public class CacheConfig {
             "presignUrl", "ieltsTestDetail", "adminIeltsTestList", "ieltsTestList",
             "adminWritingTaskList", "writingTaskDetail", "writingTaskList",
             "adminSpeakingTopicList", "speakingTopicDetail", "speakingTopicList",
-            "adminUserList", "adminUserDetail", "adminAuditLogList", "userWeakSkills", "xpHistory"
+            "adminUserList", "adminUserDetail", "adminAuditLogList", "userWeakSkills", "xpHistory",
+            "recommendedPractice"
     };
 
     /**

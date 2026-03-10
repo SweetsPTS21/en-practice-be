@@ -9,14 +9,12 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RecommendedPractice {
-    private String id;
+public class AiRecommendation {
     private String title;
     private String description;
-    private String type; // e.g., VOCAB, LISTENING, READING, SPEAKING
-    private String difficulty; // e.g., Medium, Hard
-    private String estimatedTime; // e.g., "8 mins"
-    private String path;
+    private String type; // LISTENING, READING, SPEAKING, WRITING, VOCAB
+    private String difficulty; // Easy, Medium, Hard
+    private String estimatedTime;
     private String reason;
-    private Integer priority;
+    private int priority;
 }

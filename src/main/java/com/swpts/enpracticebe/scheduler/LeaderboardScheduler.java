@@ -1,6 +1,7 @@
-package com.swpts.enpracticebe.service;
+package com.swpts.enpracticebe.scheduler;
 
 import com.swpts.enpracticebe.constant.LeaderboardPeriod;
+import com.swpts.enpracticebe.service.LeaderboardService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
