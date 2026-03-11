@@ -39,7 +39,7 @@ public class WeeklyRewardJob {
         int size = 100;
 
         while (true) {
-            Page<LeaderboardSnapshot> snapshotPage = snapshotRepository.findByPeriodTypeAndPeriodKeyAndScopeOrderByRankAsc(
+            Page<LeaderboardSnapshot> snapshotPage = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
                     LeaderboardPeriod.WEEKLY.name(), periodKey, LeaderboardScope.GLOBAL.name(), PageRequest.of(page, size));
 
             List<LeaderboardSnapshot> snapshots = snapshotPage.getContent();
