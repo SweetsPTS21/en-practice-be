@@ -43,7 +43,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public LeaderboardResponse getLeaderboard(LeaderboardPeriod period, LeaderboardScope scope, Float targetBand, int page, int size) {
         String periodKey = getPeriodKey(period);
-        Page<LeaderboardSnapshot> snapshotPage = snapshotRepository.findByPeriodTypeAndPeriodKeyAndScopeOrderByRankAsc(
+        Page<LeaderboardSnapshot> snapshotPage = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
                 period.name(), periodKey, scope.name(), PageRequest.of(page, size));
 
         List<LeaderboardEntry> entries = snapshotPage.getContent().stream().map(s -> {
@@ -77,7 +77,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         String periodKey = getPeriodKey(period);
         
         // Fetch top 3
-        Page<LeaderboardSnapshot> top3Page = snapshotRepository.findByPeriodTypeAndPeriodKeyAndScopeOrderByRankAsc(
+        Page<LeaderboardSnapshot> top3Page = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
                 period.name(), periodKey, LeaderboardScope.GLOBAL.name(), PageRequest.of(0, 3));
         
         List<LeaderboardEntry> topThree = top3Page.getContent().stream().map(s -> {
