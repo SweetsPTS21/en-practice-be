@@ -1,11 +1,16 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.request.ai.OpenClawRequest;
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
 import com.swpts.enpracticebe.dto.response.ai.OpenClawResponse;
+import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
 import com.swpts.enpracticebe.service.OpenClawService;
 import com.swpts.enpracticebe.util.AuthUtil;
+import com.swpts.enpracticebe.util.JsonUtil;
+import com.swpts.enpracticebe.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,12 +25,15 @@ import java.util.UUID;
 public class OpenClawServiceImpl implements OpenClawService {
     private final WebClient webClient;
     private final AuthUtil authUtil;
+    private final ObjectMapper objectMapper;
 
     public OpenClawServiceImpl(@Value("${openclaw.gateway.url:http://127.0.0.1:18789}") String gatewayUrl,
                                @Value("${openclaw.gateway.token:abc}") String gatewayToken,
                                WebClient.Builder builder,
-                               AuthUtil authUtil) {
+                               AuthUtil authUtil,
+                               ObjectMapper objectMapper) {
         this.authUtil = authUtil;
+        this.objectMapper = objectMapper;
         this.webClient = builder
                 .baseUrl(gatewayUrl)
                 .defaultHeader("Authorization", "Bearer " + gatewayToken)
@@ -68,19 +76,34 @@ public class OpenClawServiceImpl implements OpenClawService {
 
     @Override
     public AiExplainResponse explainWord(String word) {
-        String prompt = String.format(
-                "Giải thích từ tiếng Anh: \"%s\". " +
-                        "Bao gồm: 1) Phiên âm IPA, 2) Từ loại, " +
-                        "3) Nghĩa tiếng Việt, 4) Ví dụ câu (EN + dịch VN). " +
-                        "Trả lời ngắn gọn, rõ ràng, có chút hài hước.",
-                word);
+        String prompt = PromptBuilder.buildExplainWordPrompt(word);
 
-        OpenClawRequest request = getOpenClawRequest(prompt);
-        String response = getOpenClawResponse(request);
+        try {
+
+            OpenClawRequest request = getOpenClawRequest(prompt);
+            String response = getOpenClawResponse(request);
+            String jsonStr = JsonUtil.extractJson(response);
+            JsonNode node = objectMapper.readTree(jsonStr);
+
+            var examples = JsonUtil.parseJsonList(node.get("examples"), ExampleSentence.class);
+
+            return AiExplainResponse.builder()
+                    .word(word)
+                    .ipa(node.get("ipa").asText())
+                    .meaning(node.get("meaning").asText())
+                    .wordType(node.get("wordType").asText())
+                    .explanation(node.get("explanation").asText())
+                    .examples(examples)
+                    .sourceType(node.get("sourceType").asText())
+                    .build();
+
+        } catch (Exception e) {
+            log.info("Failed to explain word {} :: {}", word, e.getMessage());
+        }
 
         return AiExplainResponse.builder()
                 .word(word)
-                .explanation(response)
+                .explanation("Xin lỗi, tôi không thể giúp bạn lúc này ><")
                 .build();
     }
 

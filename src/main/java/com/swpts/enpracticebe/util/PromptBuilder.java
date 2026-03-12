@@ -6,6 +6,43 @@ import java.util.List;
 
 public class PromptBuilder {
 
+    public static String buildExplainWordPrompt(String word) {
+        return String.format("""
+                Giải thích từ: "%s"
+                
+                1. Phiên âm IPA
+                2. Loại từ
+                3. Nghĩa tiếng việt
+                4. Ví dụ câu (En + Vi)
+                
+                Phải trả về nội dung dưới dạng json dưới đây, không thêm gì khác
+                
+                {
+                    "word": bubble,
+                    "ipa": "/ˈbʌb.əl/",
+                    "wordType": "noun,verb",
+                    "meaning": "bong bóng, bọt khí, sủi bọt, nói líu lo",
+                    "examples": [
+                        "sentence": "The soup started to bubble—and my patience started to bubble too.",
+                        "translation": "Nồi súp bắt đầu sủi bọt—và kiên nhẫn của mình cũng sủi bọt luôn.",
+                    ],
+                    "sourceType": "VOCABULARY",
+                    "explanation": "**bubble**
+   
+                                    1) **IPA:** /ˈbʌb.əl/
+                                    2) **Từ loại:** Danh từ (noun) / Động từ (verb)
+                                    3) **Nghĩa tiếng Việt:**
+                                    - **(n):** **bong bóng**, **bọt khí**
+                                    - **(v):** **sủi bọt**, **nói líu lo**
+                                    4) **Ví dụ:**
+                                    - **EN:** *The soup started to bubble—and my patience started to bubble too.*
+                                    - **VN:** *Nồi súp bắt đầu sủi bọt—và kiên nhẫn của mình cũng sủi bọt luôn.* 😄"
+                }
+                
+                Explanation sẽ ở dạng markdown tổng hợp thông tin
+                """, word);
+    }
+
     public static String buildConversationGradingPrompt(SpeakingTopic topic, List<SpeakingConversationTurn> turns) {
         StringBuilder transcript = new StringBuilder();
         for (SpeakingConversationTurn turn : turns) {
