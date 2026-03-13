@@ -38,4 +38,22 @@ public class TextToSpeechController {
             return DefaultResponse.fail("Không thể tổng hợp giọng nói: " + e.getMessage());
         }
     }
+
+    @PostMapping("/synthesize-vocabulary")
+    public DefaultResponse<TtsResponse> synthesizeVocabulary(@Valid @RequestBody TtsRequest request) {
+        try {
+            byte[] audioBytes = textToSpeechService.synthesizeVocabulary(request.getText());
+
+            String audioBase64 = Base64.getEncoder().encodeToString(audioBytes);
+
+            TtsResponse response = TtsResponse.builder()
+                    .text(request.getText())
+                    .audioBase64(audioBase64)
+                    .build();
+
+            return DefaultResponse.success(response);
+        } catch (Exception e) {
+            return DefaultResponse.fail("Không thể tổng hợp giọng nói: " + e.getMessage());
+        }
+    }
 }

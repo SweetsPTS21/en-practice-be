@@ -11,4 +11,13 @@ public interface TextToSpeechService {
      * @return MP3 audio bytes
      */
     byte[] synthesize(String text, String voiceName);
+
+    /**
+     * Synthesize a single vocabulary word to speech audio bytes (MP3).
+     * Uses slower speaking rate for clearer pronunciation.
+     *
+     * @param word the vocabulary word to synthesize
+     * @return MP3 audio bytes
+     */
+    byte[] synthesizeVocabulary(String word);
 }

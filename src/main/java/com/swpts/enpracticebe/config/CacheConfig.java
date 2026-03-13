@@ -35,6 +35,13 @@ public class CacheConfig {
             "leaderboardPage", "leaderboardSummary", "userRank"
     };
 
+    /**
+     * Extra-long-lived caches (24h) — TTS vocabulary audio
+     */
+    private static final String[] DAILY_TTL_CACHES = {
+            "ttsVocabulary"
+    };
+
     @Bean
     public CacheManager cacheManager() {
         Caffeine<Object, Object> longTtl = Caffeine.newBuilder()
@@ -47,10 +54,16 @@ public class CacheConfig {
                 .expireAfterWrite(5, TimeUnit.MINUTES)
                 .recordStats();
 
-        List<CaffeineCache> caches = Stream.concat(
+        Caffeine<Object, Object> dailyTtl = Caffeine.newBuilder()
+                .maximumSize(2000)
+                .expireAfterWrite(24, TimeUnit.HOURS)
+                .recordStats();
+
+        List<CaffeineCache> caches = Stream.of(
                 Arrays.stream(LONG_TTL_CACHES).map(name -> new CaffeineCache(name, longTtl.build())),
-                Arrays.stream(SHORT_TTL_CACHES).map(name -> new CaffeineCache(name, shortTtl.build()))
-        ).collect(Collectors.toList());
+                Arrays.stream(SHORT_TTL_CACHES).map(name -> new CaffeineCache(name, shortTtl.build())),
+                Arrays.stream(DAILY_TTL_CACHES).map(name -> new CaffeineCache(name, dailyTtl.build()))
+        ).flatMap(s -> s).collect(Collectors.toList());
 
         SimpleCacheManager manager = new SimpleCacheManager();
         manager.setCaches(caches);
