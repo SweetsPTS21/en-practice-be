@@ -1,6 +1,7 @@
 package com.swpts.enpracticebe.service.impl;
 
 import com.swpts.enpracticebe.constant.Constants;
+import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.dto.request.listening.AnswerItem;
 import com.swpts.enpracticebe.dto.request.listening.IeltsTestFilterRequest;
 import com.swpts.enpracticebe.dto.request.listening.SubmitTestRequest;
@@ -17,7 +18,6 @@ import com.swpts.enpracticebe.repository.IeltsTestAttemptRepository;
 import com.swpts.enpracticebe.repository.IeltsTestRepository;
 import com.swpts.enpracticebe.service.IeltsTestService;
 import com.swpts.enpracticebe.service.UserActivityLogService;
-import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +27,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.util.*;
@@ -151,6 +152,11 @@ public class IeltsTestServiceImpl implements IeltsTestService {
         for (IeltsQuestion question : allQuestions) {
             List<String> userAnswer = userAnswerMap.getOrDefault(question.getId(), Collections.emptyList());
             boolean isCorrect = checkAnswer(question.getCorrectAnswers(), userAnswer);
+
+            // case passage completion has many correct answers for each blank
+            if (question.getQuestionType() == IeltsQuestion.QuestionType.PASSAGE_COMPLETION) {
+                isCorrect = checkMultipleAnswer(question.getCorrectAnswers(), userAnswer);
+            }
 
             if (isCorrect)
                 correctCount++;
@@ -310,6 +316,22 @@ public class IeltsTestServiceImpl implements IeltsTestService {
             if (!correct.equals(user))
                 return false;
         }
+        return true;
+    }
+
+    /**
+     * Check if user answers exist in correct answers
+     */
+    private boolean checkMultipleAnswer(List<String> correctAnswers, List<String> userAnswers) {
+        if (CollectionUtils.isEmpty(correctAnswers) || CollectionUtils.isEmpty(userAnswers))
+            return false;
+
+        List<String> correct = correctAnswers.stream().map(String::trim).map(String::toLowerCase).toList();
+        for (String answer : userAnswers) {
+            if (correct.stream().noneMatch(answer.toLowerCase()::contains))
+                return false;
+        }
+
         return true;
     }
 
