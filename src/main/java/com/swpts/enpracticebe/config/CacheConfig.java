@@ -39,7 +39,7 @@ public class CacheConfig {
      * Extra-long-lived caches (24h) — TTS vocabulary audio
      */
     private static final String[] DAILY_TTL_CACHES = {
-            "ttsVocabulary"
+            "ttsVocabulary", "explainWord"
     };
 
     @Bean

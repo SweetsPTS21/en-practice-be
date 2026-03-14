@@ -5,5 +5,6 @@ public enum DictionarySourceType {
     READING_TEST,
     SPEAKING_TEST,
     AI_RECOMMENDATION,
-    VOCABULARY
+    VOCABULARY,
+    WORD_EXPLORER
 }

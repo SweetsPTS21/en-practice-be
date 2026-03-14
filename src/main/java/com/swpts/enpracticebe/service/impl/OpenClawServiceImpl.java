@@ -13,6 +13,7 @@ import com.swpts.enpracticebe.util.JsonUtil;
 import com.swpts.enpracticebe.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -75,6 +76,7 @@ public class OpenClawServiceImpl implements OpenClawService {
     }
 
     @Override
+    @Cacheable(value = "explainWord", key = "#word.trim().toLowerCase()")
     public AiExplainResponse explainWord(String word) {
         String prompt = PromptBuilder.buildExplainWordPrompt(word);
 
