@@ -21,25 +21,18 @@ public class PromptBuilder {
                     "word": bubble,
                     "ipa": "/ˈbʌb.əl/",
                     "wordType": "noun,verb",
-                    "meaning": "bong bóng, bọt khí, sủi bọt, nói líu lo",
+                    "meaning": "(n): bong bóng, bọt khí, (v): sủi bọt, nói líu lo",
                     "examples": [
                         "sentence": "The soup started to bubble—and my patience started to bubble too.",
                         "translation": "Nồi súp bắt đầu sủi bọt—và kiên nhẫn của mình cũng sủi bọt luôn.",
                     ],
                     "sourceType": "VOCABULARY",
-                    "explanation": "**bubble**
-   
-                                    1) **IPA:** /ˈbʌb.əl/
-                                    2) **Từ loại:** Danh từ (noun) / Động từ (verb)
-                                    3) **Nghĩa tiếng Việt:**
-                                    - **(n):** **bong bóng**, **bọt khí**
-                                    - **(v):** **sủi bọt**, **nói líu lo**
-                                    4) **Ví dụ:**
-                                    - **EN:** *The soup started to bubble—and my patience started to bubble too.*
-                                    - **VN:** *Nồi súp bắt đầu sủi bọt—và kiên nhẫn của mình cũng sủi bọt luôn.* 😄"
+                    "explanation": ""
                 }
                 
-                Explanation sẽ ở dạng markdown tổng hợp thông tin
+                Lưu ý:
+                - Ví dụ 1-2 câu kèm nghĩa tiếng việt
+                - Explanation sẽ là những lưu ý, lỗi dễ mắc phải khi dùng từ (md format)
                 """, word);
     }
 

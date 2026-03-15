@@ -31,7 +31,7 @@ public class LeaderboardController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return DefaultResponse.success(
-            leaderboardService.getLeaderboard(period, scope, targetBand, page, size));
+            leaderboardService.getLeaderboard(authUtil.getUserId(), period, scope, targetBand, page, size));
     }
 
     @GetMapping("/summary")

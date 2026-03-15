@@ -22,10 +22,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.IsoFields;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,9 +41,9 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
 
-    @Cacheable(value = "leaderboardPage", key = "#period + ':' + #scope + ':' + #targetBand + ':' + #page + ':' + #size")
+    @Cacheable(value = "leaderboardPage", key = "#userId + ':' + #period + ':' + #scope + ':' + #targetBand + ':' + #page + ':' + #size")
     @Override
-    public LeaderboardResponse getLeaderboard(LeaderboardPeriod period, LeaderboardScope scope, Float targetBand, int page, int size) {
+    public LeaderboardResponse getLeaderboard(UUID userId, LeaderboardPeriod period, LeaderboardScope scope, Float targetBand, int page, int size) {
         String periodKey = getPeriodKey(period);
         Page<LeaderboardSnapshot> snapshotPage = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
                 period.name(), periodKey, scope.name(), PageRequest.of(page, size));
@@ -61,7 +63,25 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                     .build();
         }).collect(Collectors.toList());
 
+        // Query myRank for the current user
+        MyRankInfo myRankInfo = null;
+        if (userId != null) {
+            LeaderboardSnapshot mySnapshot = snapshotRepository
+                    .findFirstByUserIdAndPeriodTypeAndPeriodKeyAndScopeOrderBySnapshotDateDesc(
+                            userId, period.name(), periodKey, scope.name())
+                    .orElse(null);
+            if (mySnapshot != null) {
+                myRankInfo = MyRankInfo.builder()
+                        .rank(mySnapshot.getRank())
+                        .xp(mySnapshot.getXp())
+                        .rankChange(mySnapshot.getPreviousRank() != null ? mySnapshot.getPreviousRank() - mySnapshot.getRank() : 0)
+                        .rankChangeDirection(getDirection(mySnapshot.getPreviousRank(), mySnapshot.getRank()))
+                        .build();
+            }
+        }
+
         return LeaderboardResponse.builder()
+                .myRank(myRankInfo)
                 .topUsers(entries)
                 .page(PageResponse.builder()
                         .page(page)
@@ -75,11 +95,11 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public LeaderboardSummaryResponse getLeaderboardSummary(UUID userId, LeaderboardPeriod period) {
         String periodKey = getPeriodKey(period);
-        
+
         // Fetch top 3
         Page<LeaderboardSnapshot> top3Page = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
                 period.name(), periodKey, LeaderboardScope.GLOBAL.name(), PageRequest.of(0, 3));
-        
+
         List<LeaderboardEntry> topThree = top3Page.getContent().stream().map(s -> {
             User user = userRepository.findById(s.getUserId()).orElse(new User());
             return LeaderboardEntry.builder()
@@ -114,12 +134,13 @@ public class LeaderboardServiceImpl implements LeaderboardService {
     @Override
     public void computeAndSnapshotRanks(LeaderboardPeriod period) {
         String periodKey = getPeriodKey(period);
+        String previousPeriodKey = getPreviousPeriodKey(period);
         String startDate;
         String endDate;
         LocalDate now = LocalDate.now(ZoneOffset.UTC);
 
         if (period == LeaderboardPeriod.WEEKLY) {
-            LocalDate startOfWeek = now.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY));
+            LocalDate startOfWeek = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
             LocalDate endOfWeek = startOfWeek.plusDays(7);
             startDate = startOfWeek.toString();
             endDate = endOfWeek.toString();
@@ -134,52 +155,51 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         }
 
         String sql = """
-            WITH xp_agg AS (
-                SELECT user_id, SUM(xp_amount) AS total_xp
-                FROM user_xp_logs
-                WHERE earned_at >= ?::timestamp AND earned_at < ?::timestamp
-                GROUP BY user_id
-            ),
-            ranked AS (
-                SELECT
-                    user_id,
-                    total_xp,
-                    RANK() OVER (ORDER BY total_xp DESC) AS new_rank
-                FROM xp_agg
-            )
-            INSERT INTO leaderboard_snapshots (id, user_id, period_type, period_key, scope, xp, rank, previous_rank, snapshot_date)
-            SELECT
-                gen_random_uuid(),
-                r.user_id,
-                ?,
-                ?, 
-                'GLOBAL',
-                r.total_xp,
-                r.new_rank,
-                ls.rank,           
-                CURRENT_DATE
-            FROM ranked r
-            LEFT JOIN leaderboard_snapshots ls
-                ON ls.user_id = r.user_id
-                AND ls.period_type = ?
-                AND ls.period_key = ?
-                AND ls.scope = 'GLOBAL'
-                AND ls.snapshot_date = (
-                    SELECT MAX(snapshot_date)
-                    FROM leaderboard_snapshots
-                    WHERE user_id = r.user_id
-                      AND period_type = ?
-                      AND period_key = ?
-                      AND scope = 'GLOBAL'
+                WITH xp_agg AS (
+                    SELECT user_id, SUM(xp_amount) AS total_xp
+                    FROM user_xp_logs
+                    WHERE earned_at >= ?::timestamp AND earned_at < ?::timestamp
+                    GROUP BY user_id
+                ),
+                ranked AS (
+                    SELECT
+                        user_id,
+                        total_xp,
+                        RANK() OVER (ORDER BY total_xp DESC) AS new_rank
+                    FROM xp_agg
                 )
-            ON CONFLICT (user_id, period_type, period_key, scope, snapshot_date)
-            DO UPDATE SET
-                xp = EXCLUDED.xp,
-                previous_rank = leaderboard_snapshots.rank,
-                rank = EXCLUDED.rank;
-            """;
+                INSERT INTO leaderboard_snapshots (id, user_id, period_type, period_key, scope, xp, rank, previous_rank, snapshot_date)
+                SELECT
+                    gen_random_uuid(),
+                    r.user_id,
+                    ?,
+                    ?,
+                    'GLOBAL',
+                    r.total_xp,
+                    r.new_rank,
+                    prev_ls.rank,
+                    CURRENT_DATE
+                FROM ranked r
+                LEFT JOIN leaderboard_snapshots prev_ls
+                    ON prev_ls.user_id = r.user_id
+                    AND prev_ls.period_type = ?
+                    AND prev_ls.period_key = ?
+                    AND prev_ls.scope = 'GLOBAL'
+                    AND prev_ls.snapshot_date = (
+                        SELECT MAX(snapshot_date)
+                        FROM leaderboard_snapshots
+                        WHERE user_id = r.user_id
+                          AND period_type = ?
+                          AND period_key = ?
+                          AND scope = 'GLOBAL'
+                    )
+                ON CONFLICT (user_id, period_type, period_key, scope, snapshot_date)
+                DO UPDATE SET
+                    xp = EXCLUDED.xp,
+                    rank = EXCLUDED.rank;
+                """;
 
-        jdbcTemplate.update(sql, startDate, endDate, period.name(), periodKey, period.name(), periodKey, period.name(), periodKey);
+        jdbcTemplate.update(sql, startDate, endDate, period.name(), periodKey, period.name(), previousPeriodKey, period.name(), previousPeriodKey);
     }
 
     private String getPeriodKey(LeaderboardPeriod period) {
@@ -188,6 +208,17 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             return now.getYear() + "-W" + String.format("%02d", now.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
         } else if (period == LeaderboardPeriod.MONTHLY) {
             return now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        }
+        return "ALL";
+    }
+
+    private String getPreviousPeriodKey(LeaderboardPeriod period) {
+        LocalDate now = LocalDate.now(ZoneOffset.UTC);
+        if (period == LeaderboardPeriod.WEEKLY) {
+            LocalDate lastWeek = now.minusWeeks(1);
+            return lastWeek.getYear() + "-W" + String.format("%02d", lastWeek.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+        } else if (period == LeaderboardPeriod.MONTHLY) {
+            return now.minusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
         }
         return "ALL";
     }
