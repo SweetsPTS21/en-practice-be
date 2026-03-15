@@ -30,6 +30,8 @@ import java.util.List;
 public class SecurityConfig {
     public static final String[] WHITE_LIST_URL = {
             "/api/auth/**",
+            "/api/leaderboard",
+            "/api/leaderboard/**",
             "/ws/realtime-chat/**",
             "/websocket-test.html",
             "/static/**",

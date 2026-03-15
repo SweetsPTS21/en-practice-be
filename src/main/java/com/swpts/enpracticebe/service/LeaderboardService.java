@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface LeaderboardService {
 
-    LeaderboardResponse getLeaderboard(LeaderboardPeriod period, LeaderboardScope scope, Float targetBand, int page, int size);
+    LeaderboardResponse getLeaderboard(UUID userId, LeaderboardPeriod period, LeaderboardScope scope, Float targetBand, int page, int size);
 
     LeaderboardSummaryResponse getLeaderboardSummary(UUID userId, LeaderboardPeriod period);
 

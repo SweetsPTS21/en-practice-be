@@ -41,7 +41,9 @@ public interface UserDictionaryRepository extends JpaRepository<UserDictionary, 
 
     long countByUserIdAndProficiencyLevelGreaterThanEqual(UUID userId, Integer proficiencyLevel);
 
-    long countByUserIdAndNextReviewAtBefore(UUID userId, java.time.Instant date);
+    @Query("SELECT COUNT(d) FROM UserDictionary d WHERE d.userId = :userId AND (d.nextReviewAt IS NULL OR d.nextReviewAt < :date)")
+    long countDueForReview(@Param("userId") UUID userId, @Param("date") java.time.Instant date);
 
-    Page<UserDictionary> findByUserIdAndNextReviewAtBefore(UUID userId, java.time.Instant date, Pageable pageable);
+    @Query("SELECT d FROM UserDictionary d WHERE d.userId = :userId AND (d.nextReviewAt IS NULL OR d.nextReviewAt < :date) ORDER BY CASE WHEN d.nextReviewAt IS NULL THEN 0 ELSE 1 END, d.nextReviewAt ASC")
+    Page<UserDictionary> findDueForReview(@Param("userId") UUID userId, @Param("date") java.time.Instant date, Pageable pageable);
 }

@@ -8,6 +8,7 @@ import com.swpts.enpracticebe.dto.response.leaderboard.XpHistoryResponse;
 import com.swpts.enpracticebe.entity.User;
 import com.swpts.enpracticebe.entity.UserDailyXpCap;
 import com.swpts.enpracticebe.entity.UserXpLog;
+import com.swpts.enpracticebe.repository.LeaderboardSnapshotRepository;
 import com.swpts.enpracticebe.repository.UserDailyXpCapRepository;
 import com.swpts.enpracticebe.repository.UserRepository;
 import com.swpts.enpracticebe.repository.UserXpLogRepository;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.IsoFields;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,6 +37,7 @@ public class XpServiceImpl implements XpService {
     private final UserXpLogRepository userXpLogRepository;
     private final UserDailyXpCapRepository userDailyXpCapRepository;
     private final UserRepository userRepository;
+    private final LeaderboardSnapshotRepository leaderboardSnapshotRepository;
 
     @Override
     @Transactional
@@ -117,9 +120,18 @@ public class XpServiceImpl implements XpService {
                         .build())
                 .collect(Collectors.toList());
 
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        String weeklyPeriodKey = today.getYear() + "-W"
+                + String.format("%02d", today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+        int weeklyXP = leaderboardSnapshotRepository
+                .findFirstByUserIdAndPeriodTypeAndPeriodKeyAndScopeOrderBySnapshotDateDesc(
+                        userId, "WEEKLY", weeklyPeriodKey, "GLOBAL")
+                .map(s -> s.getXp() != null ? s.getXp() : 0)
+                .orElse(0);
+
         return XpHistoryResponse.builder()
                 .totalXP(user.getTotalXp() != null ? user.getTotalXp() : 0)
-                .weeklyXP(0) // Weekly XP calculation can be added if leaderboard snapshots are queried
+                .weeklyXP(weeklyXP)
                 .history(history)
                 .page(PageResponse.builder()
                         .page(page)

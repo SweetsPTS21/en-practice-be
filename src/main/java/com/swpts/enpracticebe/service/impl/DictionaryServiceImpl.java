@@ -47,6 +47,7 @@ public class DictionaryServiceImpl implements DictionaryService {
                 .isFavorite(request.getIsFavorite() != null ? request.getIsFavorite() : false)
                 .proficiencyLevel(0)
                 .reviewCount(0)
+                .nextReviewAt(Instant.now()) // due immediately when first added
                 .build();
 
         userDictionary = dictionaryRepository.save(userDictionary);
@@ -162,7 +163,7 @@ public class DictionaryServiceImpl implements DictionaryService {
         long newWords = dictionaryRepository.countByUserIdAndProficiencyLevel(userId, 0);
         long masterWords = dictionaryRepository.countByUserIdAndProficiencyLevelGreaterThanEqual(userId, 4);
         long learning = total - newWords - masterWords;
-        long toReview = dictionaryRepository.countByUserIdAndNextReviewAtBefore(userId, Instant.now());
+        long toReview = dictionaryRepository.countDueForReview(userId, Instant.now());
 
         return DictionaryStatsResponse.builder()
                 .totalWords(total)
@@ -177,7 +178,7 @@ public class DictionaryServiceImpl implements DictionaryService {
     @Override
     @Transactional(readOnly = true)
     public Page<DictionaryWordResponse> getWordsDueForReview(UUID userId, Pageable pageable) {
-         Page<UserDictionary> usersPage = dictionaryRepository.findByUserIdAndNextReviewAtBefore(
+        Page<UserDictionary> usersPage = dictionaryRepository.findDueForReview(
                 userId, Instant.now(), pageable
         );
         return usersPage.map(this::mapToResponse);

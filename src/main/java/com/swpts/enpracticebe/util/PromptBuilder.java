@@ -21,7 +21,7 @@ public class PromptBuilder {
                     "word": bubble,
                     "ipa": "/ˈbʌb.əl/",
                     "wordType": "noun,verb",
-                    "meaning": "- (n): bong bóng, bọt khí\n- (v): sủi bọt, nói líu lo",
+                    "meaning": "(n): bong bóng, bọt khí, (v): sủi bọt, nói líu lo",
                     "examples": [
                         "sentence": "The soup started to bubble—and my patience started to bubble too.",
                         "translation": "Nồi súp bắt đầu sủi bọt—và kiên nhẫn của mình cũng sủi bọt luôn.",
