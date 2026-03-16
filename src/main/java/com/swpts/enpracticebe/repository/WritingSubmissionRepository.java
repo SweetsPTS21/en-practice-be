@@ -14,6 +14,8 @@ public interface WritingSubmissionRepository extends JpaRepository<WritingSubmis
 
     List<WritingSubmission> findByUserIdOrderBySubmittedAtDesc(UUID userId);
 
+    List<WritingSubmission> findTop5ByUserIdOrderBySubmittedAtDesc(UUID userId);
+
     List<WritingSubmission> findTop10ByUserIdAndStatusOrderByGradedAtDesc(UUID userId, WritingSubmission.SubmissionStatus status);
 
     List<WritingSubmission> findByTaskIdAndUserIdOrderBySubmittedAtDesc(UUID taskId, UUID userId);

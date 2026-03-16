@@ -31,4 +31,12 @@ public interface OpenClawService {
      * @return ai ask response
      */
     AiAskResponse askAi(String prompt, UUID userId);
+
+    /**
+     * Get AI response for system operations
+     *
+     * @param prompt prompt
+     * @return ai ask response
+     */
+    AiAskResponse systemCallAi(String prompt);
 }

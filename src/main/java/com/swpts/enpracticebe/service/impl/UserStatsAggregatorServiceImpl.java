@@ -194,7 +194,7 @@ public class UserStatsAggregatorServiceImpl implements UserStatsAggregatorServic
         if (hasData) {
             try {
                 String prompt = buildAiPrompt(profile);
-                AiAskResponse response = openClawService.askAi(prompt, userId);
+                AiAskResponse response = openClawService.systemCallAi(prompt);
                 List<AiRecommendation> aiRecs = parseAiResponse(response.getAnswer());
 
                 if (aiRecs != null && !aiRecs.isEmpty()) {

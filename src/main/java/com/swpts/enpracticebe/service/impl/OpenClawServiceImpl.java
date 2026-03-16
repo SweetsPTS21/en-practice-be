@@ -43,6 +43,19 @@ public class OpenClawServiceImpl implements OpenClawService {
                 .build();
     }
 
+    private OpenClawRequest getSystemRequest(String prompt) {
+        OpenClawRequest request = new OpenClawRequest();
+        request.setModel("openclaw");
+        request.setUser("en-practice-system-operations");
+
+        OpenClawRequest.Message msg = new OpenClawRequest.Message();
+        msg.setRole("user");
+        msg.setContent(prompt);
+        request.setMessages(List.of(msg));
+
+        return request;
+    }
+
     private OpenClawRequest getOpenClawRequest(String prompt) {
         return getOpenClawRequest(prompt, authUtil.getUserId());
     }
@@ -82,7 +95,7 @@ public class OpenClawServiceImpl implements OpenClawService {
 
         try {
 
-            OpenClawRequest request = getOpenClawRequest(prompt);
+            OpenClawRequest request = getSystemRequest(prompt);
             String response = getOpenClawResponse(request);
             String jsonStr = JsonUtil.extractJson(response);
             JsonNode node = objectMapper.readTree(jsonStr);
@@ -123,6 +136,15 @@ public class OpenClawServiceImpl implements OpenClawService {
     public AiAskResponse askAi(String prompt, UUID userId) {
         OpenClawRequest request = getOpenClawRequest(prompt, userId);
         String response = getOpenClawResponse(request);
+
+        return AiAskResponse.builder()
+                .answer(response)
+                .build();
+    }
+
+    @Override
+    public AiAskResponse systemCallAi(String prompt) {
+        String response = getOpenClawResponse(getSystemRequest(prompt));
 
         return AiAskResponse.builder()
                 .answer(response)

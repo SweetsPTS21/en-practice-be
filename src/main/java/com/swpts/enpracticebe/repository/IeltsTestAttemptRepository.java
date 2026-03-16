@@ -14,6 +14,8 @@ public interface IeltsTestAttemptRepository extends JpaRepository<IeltsTestAttem
 
     List<IeltsTestAttempt> findByUserIdOrderByStartedAtDesc(UUID userId);
 
+    List<IeltsTestAttempt> findTop5ByUserIdOrderByStartedAtDesc(UUID userId);
+
     List<IeltsTestAttempt> findByUserIdAndTestId(UUID userId, UUID testId);
 
     // Dashboard queries
