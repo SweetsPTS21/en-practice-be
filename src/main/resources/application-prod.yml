@@ -22,6 +22,19 @@ tts:
   voice-name: en-US-Neural2-J
   language-code: en-US
 
+stt:
+  google:
+    enabled: true
+    project-id: en-practice
+    location: global
+    recognizer: _
+    language-codes:
+      - en-US
+    model: latest_long
+    interim-results: true
+    endpoint: speech.googleapis.com:443
+    credentials-base64: base64-encoded-google-service-account-json
+
 backblaze:
   s3:
     endpoint: enpoint.backblazeb2.com
