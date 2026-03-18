@@ -3,7 +3,6 @@ package com.swpts.enpracticebe.util;
 import com.swpts.enpracticebe.entity.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PromptBuilder {
 
@@ -56,7 +55,7 @@ public class PromptBuilder {
         // Aggregate analytics across all turns that have data
         List<SpeakingConversationTurn> turnsWithAnalytics = turns.stream()
                 .filter(t -> t.getWordCount() != null && t.getWordCount() > 0)
-                .collect(Collectors.toList());
+                .toList();
 
         String analyticsSection = "";
         if (!turnsWithAnalytics.isEmpty()) {

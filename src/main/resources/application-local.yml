@@ -28,3 +28,6 @@ backblaze:
     secret-access-key: secret-access
     bucket-name: en-practice-bucket
     worker-shared-secret: worker-shared-secret
+stt:
+  google:
+    credentials-base64: base64-encoded-google-credentials
