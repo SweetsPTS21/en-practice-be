@@ -51,7 +51,7 @@ public class ConversationGradingService {
                     turnRepository.findByConversationIdOrderByTurnNumberAsc(conversationId);
 
             String gradingPrompt = PromptBuilder.buildConversationGradingPrompt(topic, turns);
-            AiAskResponse aiResponse = openClawService.askAi(gradingPrompt, userId);
+            AiAskResponse aiResponse = openClawService.systemCallAi(gradingPrompt);
             // Pass already-fetched turns to avoid a duplicate DB query
             parseAndSaveResult(conversation, aiResponse.getAnswer(), turns);
 

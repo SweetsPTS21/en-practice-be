@@ -51,7 +51,7 @@ public class WritingGradingService {
             String gradingPrompt = PromptBuilder.buildWritingGradingPrompt(task, submission);
 
             // Call AI
-            AiAskResponse aiResponse = openClawService.askAi(gradingPrompt, userId);
+            AiAskResponse aiResponse = openClawService.systemCallAi(gradingPrompt);
 
             // Parse AI response
             parseAndSaveGradingResult(submission, aiResponse.getAnswer());

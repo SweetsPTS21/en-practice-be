@@ -46,7 +46,7 @@ public class SpeakingGradingService {
             attemptRepository.save(attempt);
 
             String gradingPrompt = PromptBuilder.buildSpeakingGradingPrompt(topic, attempt);
-            AiAskResponse aiResponse = openClawService.askAi(gradingPrompt, userId);
+            AiAskResponse aiResponse = openClawService.systemCallAi(gradingPrompt);
             parseAndSaveGradingResult(attempt, aiResponse.getAnswer());
 
             try {

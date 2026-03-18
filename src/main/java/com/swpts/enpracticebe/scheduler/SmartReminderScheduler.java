@@ -1,7 +1,7 @@
 package com.swpts.enpracticebe.scheduler;
 
 import com.swpts.enpracticebe.repository.UserRepository;
-import com.swpts.enpracticebe.service.MascotService;
+import com.swpts.enpracticebe.service.SmartReminderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -13,18 +13,18 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MascotScheduler {
+public class SmartReminderScheduler {
 
     private final UserRepository userRepository;
-    private final MascotService mascotService;
+    private final SmartReminderService smartReminderService;
 
     /**
-     * Runs every 6 hours to pre-compute AI mascot messages for all users.
-     * Prevents real-time AI calls when the floating mascot panel is opened.
+     * Runs every 6 hours to pre-compute AI smart reminders for all active users.
+     * Prevents slow AI calls from blocking the Dashboard API.
      */
-    @Scheduled(cron = "0 10 */6 * * *")
-    public void computeMascotMessagesForAllUsers() {
-        log.info("Starting scheduled mascot message computation...");
+    @Scheduled(cron = "0 30 */6 * * *")
+    public void computeSmartRemindersForAllUsers() {
+        log.info("Starting scheduled smart reminder computation...");
 
         List<UUID> activeUserIds = userRepository.findAllActiveUserIds();
 
@@ -32,13 +32,13 @@ public class MascotScheduler {
         int failed = 0;
         for (UUID userId : activeUserIds) {
             try {
-                mascotService.computeMascotMessages(userId);
+                smartReminderService.computeSmartReminder(userId);
                 success++;
             } catch (Exception e) {
                 failed++;
-                log.warn("Failed to compute mascot messages for user {}: {}", userId, e.getMessage());
+                log.warn("Failed to compute smart reminder for user {}: {}", userId, e.getMessage());
             }
         }
-        log.info("Mascot computation completed. Success: {}, Failed: {}", success, failed);
+        log.info("Smart reminder computation completed. Success: {}, Failed: {}", success, failed);
     }
 }

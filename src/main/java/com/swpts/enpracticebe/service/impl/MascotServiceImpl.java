@@ -83,7 +83,7 @@ public class MascotServiceImpl implements MascotService {
             List<String> weakSkills = userStatsAggregatorService.getWeakSkillsFromProfile(profile);
 
             String prompt = buildMascotPrompt(profile, weakSkills, streakDays);
-            String answer = openClawService.askAi(prompt, userId).getAnswer();
+            String answer = openClawService.systemCallAi(prompt).getAnswer();
             List<MascotMessage.MessageItem> items = parseAiMessages(answer);
 
             if (items == null || items.isEmpty()) {

@@ -32,6 +32,8 @@ public interface VocabularyRecordRepository extends JpaRepository<VocabularyReco
 
     List<VocabularyRecord> findByUserIdOrderByTestedAtDesc(UUID userId);
 
+    List<VocabularyRecord> findTop5ByUserIdOrderByTestedAtDesc(UUID userId);
+
     List<VocabularyRecord> findByUserIdAndTestedAtGreaterThanEqual(UUID userId, Instant since);
 
     List<VocabularyRecord> findByUserIdAndIsCorrectFalse(UUID userId);

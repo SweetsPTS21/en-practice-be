@@ -187,7 +187,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
         // AI decides: HINT (user struggling) or QUESTION (user answered well -> next follow-up)
         AdaptiveResult aiResult = generateAdaptiveResponse(
-                topic, existingTurns, currentTurn, nextFollowUp, currentFollowUpIndex, userId);
+                topic, existingTurns, currentTurn, nextFollowUp, currentFollowUpIndex);
 
         int nextTurnNumber = currentTurn.getTurnNumber() + 1;
 
@@ -258,13 +258,12 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                                                     List<SpeakingConversationTurn> existingTurns,
                                                     SpeakingConversationTurn currentTurn,
                                                     String nextFollowUp,
-                                                    int currentFollowUpIndex,
-                                                    UUID userId) {
+                                                    int currentFollowUpIndex) {
 
 
         try {
             String prompt = PromptBuilder.buildAdaptivePrompt(topic, existingTurns, currentTurn, nextFollowUp);
-            AiAskResponse aiResponse = openClawService.askAi(prompt, userId);
+            AiAskResponse aiResponse = openClawService.systemCallAi(prompt);
             String raw = aiResponse.getAnswer().trim();
 
             // Parse JSON response
