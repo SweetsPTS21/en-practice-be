@@ -1,10 +1,12 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
 import com.swpts.enpracticebe.dto.response.speaking.ConversationResponse;
 import com.swpts.enpracticebe.dto.response.speaking.NextQuestionResponse;
+import com.swpts.enpracticebe.dto.speech.SpeechAnalyticsDto;
 import com.swpts.enpracticebe.entity.SpeakingConversation;
 import com.swpts.enpracticebe.entity.SpeakingConversationTurn;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
@@ -40,6 +42,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     private final OpenClawService openClawService;
     private final ConversationGradingService gradingService;
     private final SpeakingMapper speakingMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -108,6 +111,24 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         currentTurn.setUserTranscript(request.getTranscript());
         currentTurn.setAudioUrl(request.getAudioUrl());
         currentTurn.setTimeSpentSeconds(request.getTimeSpentSeconds());
+
+        // ─── Persist speech analytics if provided ─────────────────────────────
+        SpeechAnalyticsDto analytics = request.getSpeechAnalytics();
+        if (analytics != null) {
+            currentTurn.setWordCount(analytics.getWordCount());
+            currentTurn.setWordsPerMinute(analytics.getWordsPerMinute());
+            currentTurn.setPauseCount(analytics.getPauseCount());
+            currentTurn.setAvgPauseDurationMs(analytics.getAvgPauseDurationMs());
+            currentTurn.setLongPauseCount(analytics.getLongPauseCount());
+            currentTurn.setFillerWordCount(analytics.getFillerWordCount());
+            currentTurn.setAvgWordConfidence(analytics.getAvgWordConfidence());
+            try {
+                currentTurn.setSpeechDataJson(objectMapper.writeValueAsString(analytics));
+            } catch (Exception e) {
+                log.warn("Failed to serialize speech analytics for turn: {}", e.getMessage());
+            }
+        }
+
         turnRepository.save(currentTurn);
 
         // Progress tracking: count only answered QUESTION turns

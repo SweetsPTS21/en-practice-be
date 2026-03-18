@@ -3,6 +3,7 @@ package com.swpts.enpracticebe.util;
 import com.swpts.enpracticebe.entity.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PromptBuilder {
 
@@ -52,6 +53,35 @@ public class PromptBuilder {
             case PART_3 -> "IELTS Speaking Part 3 (discussion, abstract ideas)";
         };
 
+        // Aggregate analytics across all turns that have data
+        List<SpeakingConversationTurn> turnsWithAnalytics = turns.stream()
+                .filter(t -> t.getWordCount() != null && t.getWordCount() > 0)
+                .collect(Collectors.toList());
+
+        String analyticsSection = "";
+        if (!turnsWithAnalytics.isEmpty()) {
+            double avgWpm = turnsWithAnalytics.stream()
+                    .filter(t -> t.getWordsPerMinute() != null)
+                    .mapToDouble(SpeakingConversationTurn::getWordsPerMinute)
+                    .average().orElse(0);
+            int totalPauses = turnsWithAnalytics.stream()
+                    .filter(t -> t.getPauseCount() != null)
+                    .mapToInt(SpeakingConversationTurn::getPauseCount).sum();
+            int totalLongPauses = turnsWithAnalytics.stream()
+                    .filter(t -> t.getLongPauseCount() != null)
+                    .mapToInt(SpeakingConversationTurn::getLongPauseCount).sum();
+            int totalFillers = turnsWithAnalytics.stream()
+                    .filter(t -> t.getFillerWordCount() != null)
+                    .mapToInt(SpeakingConversationTurn::getFillerWordCount).sum();
+            double avgConf = turnsWithAnalytics.stream()
+                    .filter(t -> t.getAvgWordConfidence() != null)
+                    .mapToDouble(SpeakingConversationTurn::getAvgWordConfidence)
+                    .average().orElse(0);
+
+            analyticsSection = buildSpeakingAnalyticsSection(
+                    avgWpm, totalPauses, totalLongPauses, null, totalFillers, avgConf, null);
+        }
+
         return String.format("""
                         You are an IELTS Speaking examiner. Grade the following %s conversation.
                         
@@ -59,7 +89,7 @@ public class PromptBuilder {
                         
                         **Full Conversation Transcript:**
                         %s
-                        
+                        %s
                         Grade on these 4 criteria (each 0.0 to 9.0, in 0.5 increments):
                         1. Fluency and Coherence
                         2. Lexical Resource
@@ -84,7 +114,126 @@ public class PromptBuilder {
                         """,
                 partDesc,
                 topic.getQuestion(),
-                transcript);
+                transcript,
+                analyticsSection);
+    }
+
+    public static String buildSpeakingGradingPrompt(SpeakingTopic topic, SpeakingAttempt attempt) {
+        String customPrompt = topic.getAiGradingPrompt();
+        if (customPrompt != null && !customPrompt.isBlank()) {
+            return customPrompt
+                    .replace("{transcript}", attempt.getTranscript())
+                    .replace("{question}", topic.getQuestion())
+                    .replace("{part}", topic.getPart().name());
+        }
+
+        String partDesc = switch (topic.getPart()) {
+            case PART_1 -> "IELTS Speaking Part 1 (familiar topics, short answers)";
+            case PART_2 -> "IELTS Speaking Part 2 (individual long turn / cue card)";
+            case PART_3 -> "IELTS Speaking Part 3 (discussion, abstract ideas)";
+        };
+
+        String cueCardSection = topic.getCueCard() != null && !topic.getCueCard().isBlank()
+                ? "\n\n**Cue Card:**\n" + topic.getCueCard()
+                : "";
+
+        // Build speech analytics section if data is available
+        String analyticsSection = buildSpeakingAnalyticsSection(
+                attempt.getWordsPerMinute(),
+                attempt.getPauseCount(),
+                attempt.getLongPauseCount(),
+                attempt.getAvgPauseDurationMs(),
+                attempt.getFillerWordCount(),
+                attempt.getAvgWordConfidence(),
+                null // low confidence words not stored separately — in speechDataJson
+        );
+
+        return String.format("""
+                        You are an IELTS Speaking examiner. Grade the following %s response.
+                        
+                        **Question:**
+                        %s%s
+                        
+                        **Student's Transcript:**
+                        %s
+                        %s
+                        Grade on these 4 criteria (each 0.0 to 9.0, in 0.5 increments):
+                        1. Fluency and Coherence
+                        2. Lexical Resource
+                        3. Grammatical Range and Accuracy
+                        4. Pronunciation
+                        
+                        You MUST respond in the following JSON format only, no extra text:
+                        {
+                          "fluency": 6.5,
+                          "lexical": 6.0,
+                          "grammar": 6.5,
+                          "pronunciation": 6.0,
+                          "overall_band": 6.5,
+                          "feedback": "Your detailed feedback in markdown format here..."
+                        }
+                        """,
+                partDesc,
+                topic.getQuestion(),
+                cueCardSection,
+                attempt.getTranscript(),
+                analyticsSection);
+    }
+
+    /**
+     * Builds the analytics context block injected into grading prompts.
+     * All params are nullable — only non-null values are included.
+     */
+    private static String buildSpeakingAnalyticsSection(
+            Double wpm, Integer pauseCount, Integer longPauseCount,
+            Double avgPauseDurationMs, Integer fillerWordCount,
+            Double avgWordConfidence, List<String> lowConfidenceWords) {
+
+        boolean hasAnyData = (wpm != null && wpm > 0)
+                || (pauseCount != null)
+                || (fillerWordCount != null)
+                || (avgWordConfidence != null && avgWordConfidence > 0);
+
+        if (!hasAnyData) return "";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n**Speech Analytics (auto-measured from audio):**\n");
+
+        if (wpm != null && wpm > 0) {
+            String rateComment = wpm < 100 ? "slow — student may be hesitating"
+                    : wpm < 110 ? "slightly below target"
+                    : wpm <= 150 ? "good (IELTS target: 110-150 WPM)"
+                    : "fast — may affect clarity";
+            sb.append(String.format("- Speaking rate: %.1f WPM (%s)%n", wpm, rateComment));
+        }
+
+        if (pauseCount != null) {
+            sb.append(String.format("- Pauses detected: %d total", pauseCount));
+            if (longPauseCount != null && longPauseCount > 0) {
+                sb.append(String.format(" (%d long pauses > 2s)", longPauseCount));
+            }
+            sb.append("\n");
+        }
+
+        if (fillerWordCount != null && fillerWordCount > 0) {
+            sb.append(String.format("- Filler words: %d occurrences (um, uh, like, etc.) — reflects hesitation%n",
+                    fillerWordCount));
+        }
+
+        if (avgWordConfidence != null && avgWordConfidence > 0) {
+            String confComment = avgWordConfidence >= 0.9 ? "clear pronunciation"
+                    : avgWordConfidence >= 0.75 ? "generally clear, some unclear words"
+                    : "many words unclear to ASR — pronunciation needs improvement";
+            sb.append(String.format("- ASR word confidence: %.2f/1.0 (%s)%n", avgWordConfidence, confComment));
+        }
+
+        if (lowConfidenceWords != null && !lowConfidenceWords.isEmpty()) {
+            sb.append(String.format("- Potentially mispronounced words (low ASR confidence): %s%n",
+                    String.join(", ", lowConfidenceWords)));
+        }
+
+        sb.append("Use the analytics above to provide more specific feedback on Fluency and Pronunciation.\n");
+        return sb.toString();
     }
 
     public static String buildWritingGradingPrompt(WritingTask task, WritingSubmission submission) {
@@ -129,56 +278,6 @@ public class PromptBuilder {
                 task.getContent(),
                 submission.getWordCount(),
                 submission.getEssayContent());
-    }
-
-    public static String buildSpeakingGradingPrompt(SpeakingTopic topic, SpeakingAttempt attempt) {
-        String customPrompt = topic.getAiGradingPrompt();
-        if (customPrompt != null && !customPrompt.isBlank()) {
-            return customPrompt
-                    .replace("{transcript}", attempt.getTranscript())
-                    .replace("{question}", topic.getQuestion())
-                    .replace("{part}", topic.getPart().name());
-        }
-
-        String partDesc = switch (topic.getPart()) {
-            case PART_1 -> "IELTS Speaking Part 1 (familiar topics, short answers)";
-            case PART_2 -> "IELTS Speaking Part 2 (individual long turn / cue card)";
-            case PART_3 -> "IELTS Speaking Part 3 (discussion, abstract ideas)";
-        };
-
-        String cueCardSection = topic.getCueCard() != null && !topic.getCueCard().isBlank()
-                ? "\n\n**Cue Card:**\n" + topic.getCueCard()
-                : "";
-
-        return String.format("""
-                        You are an IELTS Speaking examiner. Grade the following %s response.
-                        
-                        **Question:**
-                        %s%s
-                        
-                        **Student's Transcript:**
-                        %s
-                        
-                        Grade on these 4 criteria (each 0.0 to 9.0, in 0.5 increments):
-                        1. Fluency and Coherence
-                        2. Lexical Resource
-                        3. Grammatical Range and Accuracy
-                        4. Pronunciation
-                        
-                        You MUST respond in the following JSON format only, no extra text:
-                        {
-                          "fluency": 6.5,
-                          "lexical": 6.0,
-                          "grammar": 6.5,
-                          "pronunciation": 6.0,
-                          "overall_band": 6.5,
-                          "feedback": "Your detailed feedback in markdown format here..."
-                        }
-                        """,
-                partDesc,
-                topic.getQuestion(),
-                cueCardSection,
-                attempt.getTranscript());
     }
 
     public static String buildAdaptivePrompt(SpeakingTopic topic,

@@ -19,9 +19,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.socket.WebSocketHandler;
-import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
-import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
-import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.*;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Collections;
@@ -57,7 +55,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(new HandshakeInterceptor() {
                     @Override
                     public boolean beforeHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                            WebSocketHandler wsHandler, Map<String, Object> attributes) {
+                                                   WebSocketHandler wsHandler, Map<String, Object> attributes) {
                         log.info("WebSocket handshake attempt from: {}", request.getRemoteAddress());
                         log.info("Request URI: {}", request.getURI());
                         return true;
@@ -65,7 +63,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
                     @Override
                     public void afterHandshake(ServerHttpRequest request, ServerHttpResponse response,
-                            WebSocketHandler wsHandler, Exception exception) {
+                                               WebSocketHandler wsHandler, Exception exception) {
                         log.info("WebSocket handshake completed for: {}", request.getURI());
                     }
                 });

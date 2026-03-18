@@ -19,8 +19,6 @@ openclaw:
 
 tts:
   api-key: api-key-for-production
-  voice-name: en-US-Neural2-J
-  language-code: en-US
 
 backblaze:
   s3:

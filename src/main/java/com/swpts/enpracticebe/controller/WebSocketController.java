@@ -78,6 +78,7 @@ public class WebSocketController {
                 turnReq.setTranscript(message.getTranscript());
                 turnReq.setAudioUrl(message.getAudioUrl());
                 turnReq.setTimeSpentSeconds(message.getTimeSpentSeconds());
+                turnReq.setSpeechAnalytics(message.getSpeechAnalytics());
                 result = conversationService.submitTurn(message.getConversationId(), turnReq, userId);
             }
 

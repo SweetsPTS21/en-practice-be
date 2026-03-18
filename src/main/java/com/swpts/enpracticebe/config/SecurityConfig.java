@@ -33,6 +33,8 @@ public class SecurityConfig {
             "/api/leaderboard",
             "/api/leaderboard/**",
             "/ws/realtime-chat/**",
+            "/ws/speaking/stt/**",
+            "/stt/**",
             "/websocket-test.html",
             "/static/**",
             "/api/tts/**",

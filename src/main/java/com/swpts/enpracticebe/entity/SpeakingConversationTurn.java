@@ -46,6 +46,32 @@ public class SpeakingConversationTurn {
     @Column(name = "follow_up_index")
     private Integer followUpIndex; // which follow-up this turn addresses
 
+    // ─── Speech analytics (from Google STT word-level data) ───────────────────
+    @Column(name = "word_count")
+    private Integer wordCount;
+
+    @Column(name = "words_per_minute")
+    private Double wordsPerMinute;
+
+    @Column(name = "pause_count")
+    private Integer pauseCount;
+
+    @Column(name = "avg_pause_duration_ms")
+    private Double avgPauseDurationMs;
+
+    @Column(name = "long_pause_count")
+    private Integer longPauseCount;
+
+    @Column(name = "filler_word_count")
+    private Integer fillerWordCount;
+
+    @Column(name = "avg_word_confidence")
+    private Double avgWordConfidence;
+
+    /** Full JSON of SpeechAnalyticsDto (lists + word details) */
+    @Column(name = "speech_data_json", columnDefinition = "TEXT")
+    private String speechDataJson;
+
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
