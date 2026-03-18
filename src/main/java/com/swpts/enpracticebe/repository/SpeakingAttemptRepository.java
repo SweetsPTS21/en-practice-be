@@ -12,6 +12,8 @@ public interface SpeakingAttemptRepository extends JpaRepository<SpeakingAttempt
 
     List<SpeakingAttempt> findByUserIdOrderBySubmittedAtDesc(UUID userId);
 
+    List<SpeakingAttempt> findTop5ByUserIdOrderBySubmittedAtDesc(UUID userId);
+
     List<SpeakingAttempt> findTop10ByUserIdAndStatusOrderByGradedAtDesc(UUID userId, SpeakingAttempt.AttemptStatus status);
 
     List<SpeakingAttempt> findByTopicIdAndUserIdOrderBySubmittedAtDesc(UUID topicId, UUID userId);

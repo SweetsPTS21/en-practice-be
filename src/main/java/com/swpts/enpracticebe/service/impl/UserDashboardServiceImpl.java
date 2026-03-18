@@ -32,6 +32,8 @@ public class UserDashboardServiceImpl implements UserDashboardService {
     private final LeaderboardService leaderboardService;
     private final XpService xpService;
     private final UserPracticeRecommendationRepository recommendationRepository;
+    private final DashboardActivityCache dashboardActivityCache;
+    private final UserSmartReminderRepository smartReminderRepository;
 
     @Override
     public DashboardResponse getDashboard() {
@@ -43,15 +45,18 @@ public class UserDashboardServiceImpl implements UserDashboardService {
         CompletableFuture<TodayGoal> goalFuture = CompletableFuture.supplyAsync(() -> calculateTodayGoal(userId, todayStart, now));
         CompletableFuture<List<DailyTask>> tasksFuture = CompletableFuture.supplyAsync(() -> generateDailyTasks(userId, todayStart, now));
         CompletableFuture<ProgressOverview> progressFuture = CompletableFuture.supplyAsync(() -> getProgressOverview(userId));
-        CompletableFuture<List<RecentActivity>> recentFuture = CompletableFuture.supplyAsync(() -> getRecentActivities(userId));
+        CompletableFuture<List<RecentActivity>> recentFuture = CompletableFuture.supplyAsync(() -> dashboardActivityCache.getRecentActivities(userId));
         CompletableFuture<List<QuickPracticeItem>> quickFuture = CompletableFuture.supplyAsync(this::generateQuickPractice);
         CompletableFuture<LeaderboardSummaryResponse> leaderboardFuture = CompletableFuture.supplyAsync(() -> leaderboardService.getLeaderboardSummary(userId, LeaderboardPeriod.WEEKLY));
 
         // Read pre-computed recommendations from DB (populated by RecommendationScheduler every 6h)
         CompletableFuture<Optional<UserPracticeRecommendation>> recFuture = CompletableFuture.supplyAsync(() -> recommendationRepository.findByUserId(userId));
 
+        // Read pre-computed smart reminder from DB (populated by SmartReminderScheduler every 6h)
+        CompletableFuture<Optional<UserSmartReminder>> reminderFuture = CompletableFuture.supplyAsync(() -> smartReminderRepository.findByUserId(userId));
+
         CompletableFuture.allOf(streakFuture, goalFuture, tasksFuture, progressFuture, recentFuture,
-                quickFuture, leaderboardFuture, recFuture).join();
+                quickFuture, leaderboardFuture, recFuture, reminderFuture).join();
 
         // Map pre-computed data or use defaults
         Optional<UserPracticeRecommendation> precomputed = recFuture.join();
@@ -89,18 +94,29 @@ public class UserDashboardServiceImpl implements UserDashboardService {
             );
         }
 
-        // MVP Smart Reminder: if current streak is 0 but longest streak > 0, or just haven't studied today
+        // Smart Reminder: read AI pre-computed result; fallback to rule-based if not yet available
         StreakInfo streak = streakFuture.join();
-        SmartReminder smartReminder = null;
-        if (streak.getCurrentStreak() == 0) {
-            smartReminder = SmartReminder.builder()
-                    .title("Keep your streak alive!")
-                    .message("You haven't practiced today. 5 minutes is all it takes.")
-                    .type("WARNING")
-                    .ctaText("Practice Now")
-                    .ctaPath("/ielts")
-                    .build();
-        }
+        SmartReminder smartReminder = reminderFuture.join()
+                .map(r -> r.getReminder() != null ? SmartReminder.builder()
+                        .title(r.getReminder().getTitle())
+                        .message(r.getReminder().getMessage())
+                        .type(r.getReminder().getType())
+                        .ctaText(r.getReminder().getCtaText())
+                        .ctaPath(r.getReminder().getCtaPath())
+                        .build() : null)
+                .orElseGet(() -> {
+                    // Fallback: scheduler hasn't run yet for this user
+                    if (streak.getCurrentStreak() == 0) {
+                        return SmartReminder.builder()
+                                .title("Keep your streak alive!")
+                                .message("You haven't practiced today. 5 minutes is all it takes.")
+                                .type("WARNING")
+                                .ctaText("Practice Now")
+                                .ctaPath("/ielts")
+                                .build();
+                    }
+                    return null;
+                });
 
         return DashboardResponse.builder()
                 .streak(streak)
@@ -318,57 +334,7 @@ public class UserDashboardServiceImpl implements UserDashboardService {
                 .build();
     }
 
-    private List<RecentActivity> getRecentActivities(UUID userId) {
-        // We will fetch from UserActivityLogRepository. But since we didn't add the method to the repository in the multi-replace, we fetch all and limit via Stream for now to be safe, or we can use custom queries.
-        // Given we don't have a reliable top N query in standard MVP without pagination, we'll manually fetch recent attempts
-        // For production, UserActivityLog integration is better.
 
-        List<RecentActivity> activities = new ArrayList<>();
-
-        // Just pull last 5 from Vocabulary
-        List<VocabularyRecord> vocab = vocabularyRecordRepository.findByUserIdOrderByTestedAtDesc(userId);
-        if (!vocab.isEmpty()) {
-            VocabularyRecord v = vocab.get(0);
-            activities.add(RecentActivity.builder()
-                    .id(v.getId().toString())
-                    .title("Vocabulary Practice")
-                    .type("VOCAB")
-                    .score(v.getIsCorrect() ? "Correct" : "Incorrect")
-                    .description("Word: " + v.getEnglishWord())
-                    .timestamp(v.getTestedAt())
-                    .build());
-        }
-
-        List<IeltsTestAttempt> ielts = ieltsTestAttemptRepository.findByUserIdOrderByStartedAtDesc(userId);
-        if (!ielts.isEmpty()) {
-            IeltsTestAttempt i = ielts.get(0);
-            activities.add(RecentActivity.builder()
-                    .id(i.getId().toString())
-                    .title("IELTS Test")
-                    .type("LISTENING")
-                    .score(i.getBandScore() != null ? String.valueOf(i.getBandScore()) : "Pending")
-                    .description(i.getCorrectCount() + "/" + i.getTotalQuestions() + " correct")
-                    .timestamp(i.getStartedAt())
-                    .build());
-        }
-
-        List<SpeakingAttempt> speakings = speakingAttemptRepository.findByUserIdOrderBySubmittedAtDesc(userId);
-        if (!speakings.isEmpty()) {
-            SpeakingAttempt s = speakings.get(0);
-            activities.add(RecentActivity.builder()
-                    .id(s.getId().toString())
-                    .title("Speaking Practice")
-                    .type("SPEAKING")
-                    .score(s.getOverallBandScore() != null ? String.valueOf(s.getOverallBandScore()) : "Pending")
-                    .description("Topic ID: " + s.getTopicId())
-                    .timestamp(s.getSubmittedAt())
-                    .build());
-        }
-
-        // Sort by timestamp desc and take top 5
-        activities.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
-        return activities.size() > 5 ? activities.subList(0, 5) : activities;
-    }
 
     private List<QuickPracticeItem> generateQuickPractice() {
         return List.of(
@@ -395,6 +361,14 @@ public class UserDashboardServiceImpl implements UserDashboardService {
                         .estimatedTime("5 mins")
                         .icon("MicOutlined")
                         .path("/speaking")
+                        .build(),
+                QuickPracticeItem.builder()
+                        .id("q4")
+                        .title("Writing Task")
+                        .type("WRITING")
+                        .estimatedTime("20 mins")
+                        .icon("EditOutlined")
+                        .path("/writing")
                         .build()
         );
     }

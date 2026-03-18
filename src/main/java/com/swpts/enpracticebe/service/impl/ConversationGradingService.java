@@ -50,7 +50,7 @@ public class ConversationGradingService {
                     turnRepository.findByConversationIdOrderByTurnNumberAsc(conversationId);
 
             String gradingPrompt = PromptBuilder.buildConversationGradingPrompt(topic, turns);
-            AiAskResponse aiResponse = openClawService.askAi(gradingPrompt, userId);
+            AiAskResponse aiResponse = openClawService.systemCallAi(gradingPrompt);
             parseAndSaveResult(conversation, aiResponse.getAnswer());
 
             try {

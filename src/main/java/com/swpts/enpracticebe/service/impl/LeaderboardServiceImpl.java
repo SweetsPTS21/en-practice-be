@@ -97,12 +97,16 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         String periodKey = getPeriodKey(period);
 
         // Fetch top 3
-        Page<LeaderboardSnapshot> top3Page = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
-                period.name(), periodKey, LeaderboardScope.GLOBAL.name(), PageRequest.of(0, 3));
+        var top3Page = snapshotRepository.findLatestByPeriodTypeAndPeriodKeyAndScope(
+                period.name(), periodKey, LeaderboardScope.GLOBAL.name(), PageRequest.of(0, 3)).getContent();
 
-        List<LeaderboardEntry> topThree = top3Page.getContent().stream().map(s -> {
-            User user = userRepository.findById(s.getUserId()).orElse(new User());
+        var userIds = top3Page.stream().map(LeaderboardSnapshot::getUserId).collect(Collectors.toList());
+        var usersMap = userRepository.findAllById(userIds).stream().collect(Collectors.toMap(User::getId, user -> user));
+
+        List<LeaderboardEntry> topThree = top3Page.stream().map(s -> {
+            var user = usersMap.getOrDefault(s.getUserId(), new User());
             return LeaderboardEntry.builder()
+                    .userId(s.getUserId())
                     .rank(s.getRank())
                     .displayName(user.getDisplayName())
                     .xp(s.getXp())
