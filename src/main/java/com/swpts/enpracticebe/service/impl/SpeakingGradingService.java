@@ -81,7 +81,26 @@ public class SpeakingGradingService {
             attempt.setFluencyScore(getFloatField(node, "fluency"));
             attempt.setLexicalScore(getFloatField(node, "lexical"));
             attempt.setGrammarScore(getFloatField(node, "grammar"));
-            attempt.setPronunciationScore(getFloatField(node, "pronunciation"));
+
+            Float aiPronScore = getFloatField(node, "pronunciation");
+
+            // ─── Hybrid pronunciation scoring ────────────────────────────────
+            // When we have real ASR confidence data, blend it with AI text-based score.
+            // Formula: 60% AI (context/grammar-aware) + 40% confidence-derived score
+            if (aiPronScore != null && attempt.getAvgWordConfidence() != null
+                    && attempt.getAvgWordConfidence() > 0) {
+                float confidenceScore = (float) (attempt.getAvgWordConfidence() * 9.0);
+                float hybridScore = (float) (0.6 * aiPronScore + 0.4 * confidenceScore);
+                // Round to nearest 0.5 (IELTS band convention)
+                hybridScore = Math.round(hybridScore * 2) / 2.0f;
+                hybridScore = Math.max(1.0f, Math.min(9.0f, hybridScore));
+                attempt.setPronunciationScore(hybridScore);
+                log.debug("Hybrid pronunciation: AI={}, confidenceDerived={}, final={}",
+                        aiPronScore, String.format("%.2f", confidenceScore), hybridScore);
+            } else {
+                attempt.setPronunciationScore(aiPronScore);
+            }
+
             attempt.setOverallBandScore(getFloatField(node, "overall_band"));
 
             String feedback = node.has("feedback") ? node.get("feedback").asText() : aiAnswer;

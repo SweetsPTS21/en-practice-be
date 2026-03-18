@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.OptionalDouble;
 import java.util.UUID;
 
 @Slf4j
@@ -51,7 +52,8 @@ public class ConversationGradingService {
 
             String gradingPrompt = PromptBuilder.buildConversationGradingPrompt(topic, turns);
             AiAskResponse aiResponse = openClawService.askAi(gradingPrompt, userId);
-            parseAndSaveResult(conversation, aiResponse.getAnswer());
+            // Pass already-fetched turns to avoid a duplicate DB query
+            parseAndSaveResult(conversation, aiResponse.getAnswer(), turns);
 
             try {
                 pushNotificationService.sendNotificationToUser(
@@ -78,7 +80,8 @@ public class ConversationGradingService {
     }
 
 
-    private void parseAndSaveResult(SpeakingConversation conversation, String aiAnswer) {
+    private void parseAndSaveResult(SpeakingConversation conversation, String aiAnswer,
+                                    List<SpeakingConversationTurn> turns) {
         try {
             String jsonStr = JsonUtil.extractJson(aiAnswer);
             JsonNode node = objectMapper.readTree(jsonStr);
@@ -86,7 +89,25 @@ public class ConversationGradingService {
             conversation.setFluencyScore(getFloatField(node, "fluency"));
             conversation.setLexicalScore(getFloatField(node, "lexical"));
             conversation.setGrammarScore(getFloatField(node, "grammar"));
-            conversation.setPronunciationScore(getFloatField(node, "pronunciation"));
+
+            Float aiPronScore = getFloatField(node, "pronunciation");
+
+            // ─── Hybrid pronunciation scoring from turns ──────────────────────
+            OptionalDouble avgConfOpt = turns.stream()
+                    .filter(t -> t.getAvgWordConfidence() != null && t.getAvgWordConfidence() > 0)
+                    .mapToDouble(SpeakingConversationTurn::getAvgWordConfidence)
+                    .average();
+
+            if (aiPronScore != null && avgConfOpt.isPresent()) {
+                float confidenceScore = (float) (avgConfOpt.getAsDouble() * 9.0);
+                float hybridScore = (float) (0.6 * aiPronScore + 0.4 * confidenceScore);
+                hybridScore = Math.round(hybridScore * 2) / 2.0f;
+                hybridScore = Math.max(1.0f, Math.min(9.0f, hybridScore));
+                conversation.setPronunciationScore(hybridScore);
+            } else {
+                conversation.setPronunciationScore(aiPronScore);
+            }
+
             conversation.setOverallBandScore(getFloatField(node, "overall_band"));
 
             String feedback = node.has("feedback") ? node.get("feedback").asText() : aiAnswer;

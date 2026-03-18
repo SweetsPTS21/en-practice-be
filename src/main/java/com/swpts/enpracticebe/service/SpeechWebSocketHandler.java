@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.speech.v2.SpeechClient;
 import com.swpts.enpracticebe.constant.GoogleSttProperties;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +20,15 @@ public class SpeechWebSocketHandler extends BinaryWebSocketHandler {
 
     private final SpeechClient speechClient;
     private final GoogleSttProperties props;
+    private final SpeechAnalyticsService analyticsService;
+    private final ObjectMapper objectMapper;
 
     private final Map<String, GoogleSpeechStreamingSession> sessions = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         GoogleSpeechStreamingSession sttSession =
-                new GoogleSpeechStreamingSession(speechClient, props, session);
+                new GoogleSpeechStreamingSession(speechClient, props, session, analyticsService, objectMapper);
 
         sttSession.start();
         sttSession.pollResponses();

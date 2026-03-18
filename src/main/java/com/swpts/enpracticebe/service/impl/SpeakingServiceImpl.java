@@ -1,11 +1,13 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.speaking.SpeakingAttemptResponse;
 import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicListResponse;
 import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicResponse;
+import com.swpts.enpracticebe.dto.speech.SpeechAnalyticsDto;
 import com.swpts.enpracticebe.entity.SpeakingAttempt;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
 import com.swpts.enpracticebe.mapper.SpeakingMapper;
@@ -42,6 +44,7 @@ public class SpeakingServiceImpl implements SpeakingService {
     private final SpeakingMapper speakingMapper;
     private final UserActivityLogService userActivityLogService;
     private final XpService xpService;
+    private final ObjectMapper objectMapper;
 
     @Override
     public PageResponse<SpeakingTopicListResponse> getTopics(SpeakingTopicFilterRequest request) {
@@ -104,6 +107,24 @@ public class SpeakingServiceImpl implements SpeakingService {
                 .timeSpentSeconds(request.getTimeSpentSeconds())
                 .status(SpeakingAttempt.AttemptStatus.SUBMITTED)
                 .build();
+
+        // ─── Persist speech analytics if provided ─────────────────────────────
+        SpeechAnalyticsDto analytics = request.getSpeechAnalytics();
+        if (analytics != null) {
+            attempt.setWordCount(analytics.getWordCount());
+            attempt.setWordsPerMinute(analytics.getWordsPerMinute());
+            attempt.setPauseCount(analytics.getPauseCount());
+            attempt.setAvgPauseDurationMs(analytics.getAvgPauseDurationMs());
+            attempt.setLongPauseCount(analytics.getLongPauseCount());
+            attempt.setFillerWordCount(analytics.getFillerWordCount());
+            attempt.setAvgWordConfidence(analytics.getAvgWordConfidence());
+            try {
+                attempt.setSpeechDataJson(objectMapper.writeValueAsString(analytics));
+            } catch (Exception e) {
+                log.warn("Failed to serialize speech analytics for attempt: {}", e.getMessage());
+            }
+        }
+
         attempt = attemptRepository.save(attempt);
 
         // take the first 100 characters of the question as the entity name since Speaking topics don't have titles

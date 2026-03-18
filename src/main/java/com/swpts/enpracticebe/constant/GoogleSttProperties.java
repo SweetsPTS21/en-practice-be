@@ -21,6 +21,16 @@ public class GoogleSttProperties {
     private String endpoint = "speech.googleapis.com:443";
     private String credentialsBase64;
 
+    // ─── Enhanced analytics config ────────────────────────────────────────────
+    /** Enable word-level time offsets from Google STT (needed for pause detection & WPM) */
+    private boolean enableWordTimeOffsets = true;
+    /** Enable word-level confidence scores from Google STT (needed for pronunciation analysis) */
+    private boolean enableWordConfidence = true;
+    /** Gap between words (ms) that is considered a meaningful pause */
+    private int pauseThresholdMs = 1000;
+    /** Word confidence below this value is flagged as potentially mispronounced */
+    private float lowConfidenceThreshold = 0.75f;
+
 
     public String recognizerPath() {
         return String.format(

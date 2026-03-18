@@ -1,18 +1,42 @@
 package com.swpts.enpracticebe.mapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.response.admin.AdminSpeakingTopicResponse;
 import com.swpts.enpracticebe.dto.response.speaking.*;
+import com.swpts.enpracticebe.dto.speech.SpeechAnalyticsDto;
 import com.swpts.enpracticebe.entity.SpeakingAttempt;
 import com.swpts.enpracticebe.entity.SpeakingConversation;
 import com.swpts.enpracticebe.entity.SpeakingConversationTurn;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class SpeakingMapper {
+
+    private final ObjectMapper objectMapper;
+
+    // ─── Helper ───────────────────────────────────────────────────────────────
+
+    /** Safely deserialize speech_data_json → SpeechAnalyticsDto; returns null on failure */
+    private SpeechAnalyticsDto parseSpeechData(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return objectMapper.readValue(json, SpeechAnalyticsDto.class);
+        } catch (Exception e) {
+            log.warn("Failed to parse speech_data_json: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    // ─── Topic mappings ───────────────────────────────────────────────────────
+
     public SpeakingTopicListResponse toListResponse(SpeakingTopic topic) {
         return SpeakingTopicListResponse.builder()
                 .id(topic.getId())
@@ -37,6 +61,8 @@ public class SpeakingMapper {
                 .build();
     }
 
+    // ─── Attempt mappings ─────────────────────────────────────────────────────
+
     public SpeakingAttemptResponse toAttemptResponse(SpeakingAttempt attempt, SpeakingTopic topic) {
         return SpeakingAttemptResponse.builder()
                 .id(attempt.getId())
@@ -53,10 +79,13 @@ public class SpeakingMapper {
                 .pronunciationScore(attempt.getPronunciationScore())
                 .overallBandScore(attempt.getOverallBandScore())
                 .aiFeedback(attempt.getAiFeedback())
+                .speechAnalytics(parseSpeechData(attempt.getSpeechDataJson()))
                 .submittedAt(attempt.getSubmittedAt())
                 .gradedAt(attempt.getGradedAt())
                 .build();
     }
+
+    // ─── Admin topic ──────────────────────────────────────────────────────────
 
     public AdminSpeakingTopicResponse toAdminResponse(SpeakingTopic topic) {
         return AdminSpeakingTopicResponse.builder()
@@ -73,6 +102,8 @@ public class SpeakingMapper {
                 .build();
     }
 
+    // ─── Conversation mappings ────────────────────────────────────────────────
+
     public ConversationResponse toConversationResponse(SpeakingConversation conv, SpeakingTopic topic,
                                                        List<SpeakingConversationTurn> turns) {
         List<ConversationTurnResponse> turnResponses = null;
@@ -86,6 +117,7 @@ public class SpeakingMapper {
                             .audioUrl(t.getAudioUrl())
                             .turnType(t.getTurnType())
                             .timeSpentSeconds(t.getTimeSpentSeconds())
+                            .speechAnalytics(parseSpeechData(t.getSpeechDataJson()))
                             .createdAt(t.getCreatedAt())
                             .build())
                     .collect(Collectors.toList());

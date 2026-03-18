@@ -34,6 +34,10 @@ stt:
     interim-results: true
     endpoint: speech.googleapis.com:443
     credentials-base64: base64-encoded-google-service-account-json
+    enable-word-time-offsets: true
+    enable-word-confidence: true
+    pause-threshold-ms: 1000
+    low-confidence-threshold: 0.75
 
 backblaze:
   s3:
