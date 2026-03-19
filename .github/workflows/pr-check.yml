@@ -1,0 +1,31 @@
+name: PR Build Check
+
+on:
+  pull_request:
+    branches: [develop]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 🐳 Setup Docker buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 🧪 Build thử Docker image (fail nếu build lỗi)
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: test-build:pr
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
