@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.constant.ActivityType;
 import com.swpts.enpracticebe.constant.Constants;
 import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.dto.request.listening.AnswerItem;
@@ -11,6 +12,7 @@ import com.swpts.enpracticebe.entity.IeltsAnswerRecord;
 import com.swpts.enpracticebe.entity.IeltsQuestion;
 import com.swpts.enpracticebe.entity.IeltsTest;
 import com.swpts.enpracticebe.entity.IeltsTestAttempt;
+import com.swpts.enpracticebe.exception.ForbiddenException;
 import com.swpts.enpracticebe.mapper.IeltsMapper;
 import com.swpts.enpracticebe.repository.IeltsAnswerRecordRepository;
 import com.swpts.enpracticebe.repository.IeltsQuestionRepository;
@@ -193,10 +195,9 @@ public class IeltsTestServiceImpl implements IeltsTestService {
         attempt.setCompletedAt(Instant.now());
         attemptRepository.save(attempt);
 
-        IeltsTest test = testRepository.findById(attempt.getTestId()).orElse(null);
-        if (test != null) {
-            userActivityLogService.logActivity(userId, "IELTS_ATTEMPT", attempt.getId(), test.getTitle());
-        }
+        testRepository.findById(attempt.getTestId())
+                .ifPresent(test ->
+                        userActivityLogService.logActivity(userId, ActivityType.IELTS_ATTEMPT, attempt.getId(), test.getTitle()));
 
         xpService.earnXp(userId, XpSource.FULL_TEST_COMPLETE, attempt.getId().toString(), 50);
 
@@ -261,10 +262,10 @@ public class IeltsTestServiceImpl implements IeltsTestService {
         UUID userId = authUtil.getUserId();
 
         IeltsTestAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new NoSuchElementException("Attempt not found: " + attemptId));
 
-        if (!attempt.getUserId().equals(userId)) {
-            throw new RuntimeException("Unauthorized: this attempt does not belong to you");
+        if (!attempt.getUserId().equals(userId) && !authUtil.isAdmin()) {
+            throw new ForbiddenException("Unauthorized: this attempt does not belong to you");
         }
 
         List<IeltsAnswerRecord> records = answerRecordRepository.findByAttemptId(attemptId);

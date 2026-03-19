@@ -1,5 +1,7 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.dto.request.admin.RecentActivityRequest;
+import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse;
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.ActivityStats;
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse.ContentCount;
@@ -9,6 +11,7 @@ import com.swpts.enpracticebe.dto.response.admin.UserActivityChartResponse;
 import com.swpts.enpracticebe.entity.DashboardDailyStat;
 import com.swpts.enpracticebe.entity.User;
 import com.swpts.enpracticebe.entity.UserActivityLog;
+import com.swpts.enpracticebe.mapper.admin.RecentActivityMapper;
 import com.swpts.enpracticebe.repository.DashboardDailyStatRepository;
 import com.swpts.enpracticebe.repository.UserActivityLogRepository;
 import com.swpts.enpracticebe.repository.UserRepository;
@@ -16,6 +19,8 @@ import com.swpts.enpracticebe.scheduler.DashboardStatsScheduler;
 import com.swpts.enpracticebe.service.AdminDashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -31,6 +36,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final UserActivityLogRepository userActivityLogRepository;
     private final DashboardDailyStatRepository dashboardDailyStatRepository;
     private final DashboardStatsScheduler dashboardStatsScheduler;
+    private final RecentActivityMapper recentActivityMapper;
 
     @Override
     @Cacheable(value = "dashboardStats")
@@ -70,23 +76,26 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     @Cacheable(value = "dashboardRecentActivities")
-    public List<RecentActivityResponse> getRecentActivities() {
-        List<UserActivityLog> logs = userActivityLogRepository.findTop20ByOrderByCreatedAtDesc();
+    public PageResponse<RecentActivityResponse> getRecentActivities(RecentActivityRequest request) {
+        var logs = userActivityLogRepository.filterLogs(
+                request.getUserName(),
+                request.getActivityType(),
+                request.getEntityName(),
+                request.getFrom(),
+                request.getTo(),
+                PageRequest.of(request.getPage(), request.getSize()));
 
-        Set<UUID> userIds = logs.stream().map(UserActivityLog::getUserId).collect(Collectors.toSet());
+        Set<UUID> userIds = logs.getContent().stream().map(UserActivityLog::getUserId).collect(Collectors.toSet());
         Map<UUID, User> userMap = userRepository.findAllById(userIds).stream()
                 .collect(Collectors.toMap(User::getId, u -> u));
 
-        return logs.stream().map(log -> {
-            User user = userMap.get(log.getUserId());
-            return RecentActivityResponse.builder()
-                    .userId(log.getUserId())
-                    .userName(user != null ? user.getDisplayName() : "Unknown")
-                    .activityType(log.getActivityType())
-                    .entityName(log.getEntityName())
-                    .createdAt(log.getCreatedAt())
-                    .build();
-        }).collect(Collectors.toList());
+        return PageResponse.<RecentActivityResponse>builder()
+                .items(recentActivityMapper.toDtoList(logs.getContent(), userMap))
+                .page(logs.getNumber())
+                .size(logs.getSize())
+                .totalPages(logs.getTotalPages())
+                .totalElements(logs.getTotalElements())
+                .build();
     }
 
     @Override

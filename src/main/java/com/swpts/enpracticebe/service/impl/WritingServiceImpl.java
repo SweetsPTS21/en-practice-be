@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.constant.ActivityType;
 import com.swpts.enpracticebe.dto.request.writing.SubmitWritingRequest;
 import com.swpts.enpracticebe.dto.request.writing.WritingTaskFilterRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
@@ -8,6 +9,7 @@ import com.swpts.enpracticebe.dto.response.writing.WritingTaskListResponse;
 import com.swpts.enpracticebe.dto.response.writing.WritingTaskResponse;
 import com.swpts.enpracticebe.entity.WritingSubmission;
 import com.swpts.enpracticebe.entity.WritingTask;
+import com.swpts.enpracticebe.exception.ForbiddenException;
 import com.swpts.enpracticebe.mapper.WritingMapper;
 import com.swpts.enpracticebe.repository.WritingSubmissionRepository;
 import com.swpts.enpracticebe.repository.WritingTaskRepository;
@@ -27,6 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -114,7 +117,7 @@ public class WritingServiceImpl implements WritingService {
                 .build();
         submission = submissionRepository.save(submission);
 
-        userActivityLogService.logActivity(userId, "WRITING_SUBMISSION", submission.getId(), task.getTitle());
+        userActivityLogService.logActivity(userId, ActivityType.WRITING_SUBMISSION, submission.getId(), task.getTitle());
 
         // Delegate to separate bean AFTER transaction commits,
         // so the submission is visible in DB when the async thread reads it
@@ -138,14 +141,14 @@ public class WritingServiceImpl implements WritingService {
         UUID userId = authUtil.getUserId();
 
         WritingSubmission submission = submissionRepository.findById(submissionId)
-                .orElseThrow(() -> new RuntimeException("Submission not found: " + submissionId));
+                .orElseThrow(() -> new NoSuchElementException("Submission not found: " + submissionId));
 
-        if (!submission.getUserId().equals(userId)) {
-            throw new RuntimeException("Unauthorized: this submission does not belong to you");
+        if (!submission.getUserId().equals(userId) && !authUtil.isAdmin()) {
+            throw new ForbiddenException("Unauthorized: this submission does not belong to you");
         }
 
         WritingTask task = taskRepository.findById(submission.getTaskId())
-                .orElseThrow(() -> new RuntimeException("Writing task not found: " + submission.getTaskId()));
+                .orElseThrow(() -> new NoSuchElementException("Writing task not found: " + submission.getTaskId()));
 
         return writingMapper.toSubmissionResponse(submission, task);
     }

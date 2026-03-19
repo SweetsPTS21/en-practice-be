@@ -19,6 +19,11 @@ import java.util.UUID;
 public class AuthUtil {
     private final JwtUtil jwtUtil;
 
+    public boolean isAdmin() {
+        return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+    }
+
     public UUID getUserId() {
         UUID userId = getPrincipalFromSecurityContext();
         if (Objects.isNull(userId)) {
