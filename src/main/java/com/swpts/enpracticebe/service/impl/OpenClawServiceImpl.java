@@ -12,7 +12,7 @@ import com.swpts.enpracticebe.util.AuthUtil;
 import com.swpts.enpracticebe.util.JsonUtil;
 import com.swpts.enpracticebe.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -28,19 +28,12 @@ public class OpenClawServiceImpl implements OpenClawService {
     private final AuthUtil authUtil;
     private final ObjectMapper objectMapper;
 
-    public OpenClawServiceImpl(@Value("${openclaw.gateway.url:http://127.0.0.1:18789}") String gatewayUrl,
-                               @Value("${openclaw.gateway.token:abc}") String gatewayToken,
-                               WebClient.Builder builder,
+    public OpenClawServiceImpl(@Qualifier("openClawWebClient") WebClient webClient,
                                AuthUtil authUtil,
                                ObjectMapper objectMapper) {
+        this.webClient = webClient;
         this.authUtil = authUtil;
         this.objectMapper = objectMapper;
-        this.webClient = builder
-                .baseUrl(gatewayUrl)
-                .defaultHeader("Authorization", "Bearer " + gatewayToken)
-                .defaultHeader("Content-Type", "application/json")
-                .defaultHeader("x-openclaw-agent-id", "main")
-                .build();
     }
 
     private OpenClawRequest getSystemRequest(String prompt) {

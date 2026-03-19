@@ -42,3 +42,13 @@ stt:
     enable-word-confidence: true
     pause-threshold-ms: 1000
     low-confidence-threshold: 0.75
+
+openclaw:
+  gateway:
+    connect-timeout-ms: 3000
+    response-timeout-ms: 30000
+    read-timeout-ms: 30000
+    write-timeout-ms: 30000
+    pending-acquire-timeout-ms: 5000
+    max-idle-time-ms: 60000
+    max-life-time-ms: 300000

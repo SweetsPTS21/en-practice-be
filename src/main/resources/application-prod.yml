@@ -16,6 +16,8 @@ openclaw:
   gateway:
     url: http://127.0.0.1:18789
     token: token-for-production
+    agent-id: main
+    max-connections: 100
 
 tts:
   api-key: api-key-for-production
