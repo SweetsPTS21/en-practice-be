@@ -1,13 +1,12 @@
-name: Spring Boot Docker CI
+name: Release & Deploy
 
 on:
-  pull_request:
-    branches: [develop]
-    types: [closed]
+  push:
+    tags:
+      - 'v*'   # chỉ trigger khi push tag v1.0.0, v2.1.3,...
 
 jobs:
-  docker:
-    if: github.event.pull_request.merged == true
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     permissions:
@@ -20,7 +19,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ⚡ Enable Docker layer caching (rất quan trọng với Maven)
+      # 🐳 Setup buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -31,30 +30,41 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 🏷 Generate tags (latest + commit SHA)
-      - name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest
-            type=sha
+      # 🏷 Lấy version từ tag (vd: v1.0.5)
+      - name: Extract version
+        id: vars
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
 
-      # 🚀 Build & Push (tối ưu cho Dockerfile multi-stage Maven)
-      - name: Build & Push Image
+      # 🚀 Build & Push Docker image
+      - name: Build & Push
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          file: ./Dockerfile
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-          # ⚡ Cache cực quan trọng cho Maven dependencies layer
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-          # ⚡ Tăng tốc build
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
+      # 🚀 Deploy lên EC2
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/en-practice
+
+            echo "Updating APP_VERSION to ${{ steps.vars.outputs.VERSION }}"
+
+            # update .env
+            sed -i 's/^APP_VERSION=.*/APP_VERSION=${{ steps.vars.outputs.VERSION }}/' .env
+
+            # pull & restart
+            docker compose pull
+            docker compose up -d
+
+            # cleanup old images (optional)
+            docker image prune -f
