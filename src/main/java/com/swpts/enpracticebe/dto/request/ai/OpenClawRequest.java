@@ -8,6 +8,7 @@ import java.util.List;
 public class OpenClawRequest {
     private String model;
     private String user;
+    private Boolean stream;
     private List<Message> messages;
 
     @Data

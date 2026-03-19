@@ -1,9 +1,11 @@
 package com.swpts.enpracticebe.service;
 
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiChatStreamResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public interface OpenClawService {
 
@@ -31,6 +33,15 @@ public interface OpenClawService {
      * @return ai ask response
      */
     AiAskResponse askAi(String prompt, UUID userId);
+
+    /**
+     * Stream AI response for realtime websocket chat.
+     *
+     * @param prompt prompt
+     * @param userId user id
+     * @param eventConsumer callback for streaming events
+     */
+    void streamAi(String prompt, UUID userId, Consumer<AiChatStreamResponse> eventConsumer);
 
     /**
      * Get AI response for system operations
