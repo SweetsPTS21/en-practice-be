@@ -1,6 +1,7 @@
 package com.swpts.enpracticebe.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swpts.enpracticebe.constant.ActivityType;
 import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
@@ -10,6 +11,7 @@ import com.swpts.enpracticebe.dto.response.speaking.SpeakingTopicResponse;
 import com.swpts.enpracticebe.dto.speech.SpeechAnalyticsDto;
 import com.swpts.enpracticebe.entity.SpeakingAttempt;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import com.swpts.enpracticebe.exception.ForbiddenException;
 import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingAttemptRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
@@ -29,6 +31,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -132,7 +135,7 @@ public class SpeakingServiceImpl implements SpeakingService {
         if (entityName != null && entityName.length() > 100) {
             entityName = entityName.substring(0, 97) + "...";
         }
-        userActivityLogService.logActivity(userId, "SPEAKING_ATTEMPT", attempt.getId(), entityName);
+        userActivityLogService.logActivity(userId, ActivityType.SPEAKING_ATTEMPT, attempt.getId(), entityName);
 
         final UUID attemptId = attempt.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -152,14 +155,14 @@ public class SpeakingServiceImpl implements SpeakingService {
         UUID userId = authUtil.getUserId();
 
         SpeakingAttempt attempt = attemptRepository.findById(attemptId)
-                .orElseThrow(() -> new RuntimeException("Attempt not found: " + attemptId));
+                .orElseThrow(() -> new NoSuchElementException("Attempt not found: " + attemptId));
 
-        if (!attempt.getUserId().equals(userId)) {
-            throw new RuntimeException("Unauthorized: this attempt does not belong to you");
+        if (!attempt.getUserId().equals(userId) && !authUtil.isAdmin()) {
+            throw new ForbiddenException("Unauthorized: this attempt does not belong to you");
         }
 
         SpeakingTopic topic = topicRepository.findById(attempt.getTopicId())
-                .orElseThrow(() -> new RuntimeException("Topic not found: " + attempt.getTopicId()));
+                .orElseThrow(() -> new NoSuchElementException("Topic not found: " + attempt.getTopicId()));
 
         return speakingMapper.toAttemptResponse(attempt, topic);
     }

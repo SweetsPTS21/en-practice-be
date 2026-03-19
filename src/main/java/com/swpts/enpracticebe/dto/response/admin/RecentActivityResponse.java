@@ -16,7 +16,8 @@ import java.util.UUID;
 public class RecentActivityResponse {
     private UUID userId;
     private String userName;
-    private String activityType;   // IELTS_ATTEMPT, SPEAKING_ATTEMPT, WRITING_SUBMISSION
+    private String activityType;   // IELTS_ATTEMPT, SPEAKING_ATTEMPT, WRITING_SUBMISSION, SPEAKING_CONVERSATION_ATTEMPT
+    private UUID entityId;
     private String entityName;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss", timezone = "Asia/Ho_Chi_Minh")
     private Instant createdAt;

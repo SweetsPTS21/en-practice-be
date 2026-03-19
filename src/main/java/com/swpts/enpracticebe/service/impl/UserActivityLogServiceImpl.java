@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.constant.ActivityType;
 import com.swpts.enpracticebe.entity.UserActivityLog;
 import com.swpts.enpracticebe.repository.UserActivityLogRepository;
 import com.swpts.enpracticebe.service.UserActivityLogService;
@@ -23,7 +24,7 @@ public class UserActivityLogServiceImpl implements UserActivityLogService {
     @Async
     @Transactional
     @CacheEvict(value = "dashboardRecentActivities", allEntries = true)
-    public void logActivity(UUID userId, String activityType, UUID entityId, String entityName) {
+    public void logActivity(UUID userId, ActivityType activityType, UUID entityId, String entityName) {
         if (userId == null) {
             log.warn("Cannot log user activity: userId is null");
             return;
@@ -32,7 +33,7 @@ public class UserActivityLogServiceImpl implements UserActivityLogService {
         try {
             UserActivityLog activityLog = UserActivityLog.builder()
                     .userId(userId)
-                    .activityType(activityType)
+                    .activityType(activityType.name())
                     .entityId(entityId)
                     .entityName(entityName)
                     .build();

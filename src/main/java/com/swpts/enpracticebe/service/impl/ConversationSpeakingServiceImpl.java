@@ -1,6 +1,7 @@
 package com.swpts.enpracticebe.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.swpts.enpracticebe.constant.ActivityType;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
@@ -10,12 +11,15 @@ import com.swpts.enpracticebe.dto.speech.SpeechAnalyticsDto;
 import com.swpts.enpracticebe.entity.SpeakingConversation;
 import com.swpts.enpracticebe.entity.SpeakingConversationTurn;
 import com.swpts.enpracticebe.entity.SpeakingTopic;
+import com.swpts.enpracticebe.exception.ForbiddenException;
 import com.swpts.enpracticebe.mapper.SpeakingMapper;
 import com.swpts.enpracticebe.repository.SpeakingConversationRepository;
 import com.swpts.enpracticebe.repository.SpeakingConversationTurnRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.ConversationSpeakingService;
 import com.swpts.enpracticebe.service.OpenClawService;
+import com.swpts.enpracticebe.service.UserActivityLogService;
+import com.swpts.enpracticebe.util.AuthUtil;
 import com.swpts.enpracticebe.util.PromptBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,10 +43,12 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     private final SpeakingConversationRepository conversationRepository;
     private final SpeakingConversationTurnRepository turnRepository;
     private final SpeakingTopicRepository topicRepository;
+    private final UserActivityLogService userActivityLogService;
     private final OpenClawService openClawService;
     private final ConversationGradingService gradingService;
     private final SpeakingMapper speakingMapper;
     private final ObjectMapper objectMapper;
+    private final AuthUtil authUtil;
 
     @Override
     @Transactional
@@ -73,6 +79,8 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
         conversation.setTotalTurns(1);
         conversationRepository.save(conversation);
+
+        userActivityLogService.logActivity(userId, ActivityType.SPEAKING_CONVERSATION_ATTEMPT, topic.getId(), topic.getQuestion());
 
         int totalExpectedQuestions = 1 + (topic.getFollowUpQuestions() != null ? topic.getFollowUpQuestions().size() : 0);
 
@@ -233,6 +241,12 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
     @Override
     public PageResponse<ConversationResponse> getConversationHistory(int page, int size, UUID userId) {
+        UUID authUserId = authUtil.getUserId();
+
+        if (!authUserId.equals(userId) && !authUtil.isAdmin()) {
+            throw new ForbiddenException("Unauthorized: You can only access your own conversation history");
+        }
+
         Page<SpeakingConversation> convPage = conversationRepository
                 .findByUserIdOrderByStartedAtDesc(userId, PageRequest.of(page, size));
 

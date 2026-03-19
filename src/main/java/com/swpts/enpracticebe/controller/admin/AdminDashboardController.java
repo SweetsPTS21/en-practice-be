@@ -1,6 +1,8 @@
 package com.swpts.enpracticebe.controller.admin;
 
+import com.swpts.enpracticebe.dto.request.admin.RecentActivityRequest;
 import com.swpts.enpracticebe.dto.response.DefaultResponse;
+import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.admin.DashboardStatsResponse;
 import com.swpts.enpracticebe.dto.response.admin.RecentActivityResponse;
 import com.swpts.enpracticebe.dto.response.admin.UserActivityChartResponse;
@@ -30,9 +32,9 @@ public class AdminDashboardController {
         return ResponseEntity.ok(DefaultResponse.success(adminDashboardService.refreshStats()));
     }
 
-    @GetMapping("/recent-activities")
-    public ResponseEntity<DefaultResponse<List<RecentActivityResponse>>> getRecentActivities() {
-        List<RecentActivityResponse> activities = adminDashboardService.getRecentActivities();
+    @PostMapping("/recent-activities")
+    public ResponseEntity<DefaultResponse<PageResponse<RecentActivityResponse>>> getRecentActivities(@RequestBody RecentActivityRequest request) {
+        PageResponse<RecentActivityResponse> activities = adminDashboardService.getRecentActivities(request);
         return ResponseEntity.ok(DefaultResponse.success(activities));
     }
 

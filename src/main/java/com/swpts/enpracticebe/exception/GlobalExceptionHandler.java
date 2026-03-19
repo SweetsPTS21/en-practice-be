@@ -20,6 +20,13 @@ public class GlobalExceptionHandler {
         return DefaultResponse.fail(ex.getMessage());
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public DefaultResponse<Object> handleForbiddenException(Exception ex) {
+        log.warn("Forbidden: {}", ex.getMessage());
+        return DefaultResponse.fail(ex.getMessage());
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public DefaultResponse<Object> handleNotFound(NoSuchElementException ex) {
