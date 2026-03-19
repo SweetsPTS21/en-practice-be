@@ -40,6 +40,7 @@ jobs:
           tags: |
             type=raw,value=latest
             type=sha
+            type=ref,event=tag
 
       # 🚀 Build & Push (tối ưu cho Dockerfile multi-stage Maven)
       - name: Build & Push Image
@@ -58,3 +59,18 @@ jobs:
           # ⚡ Tăng tốc build
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/en-practice
+
+            # update version
+            sed -i 's/^APP_VERSION=.*/APP_VERSION=${{ github.ref_name }}/' .env
+
+            docker compose pull
+            docker compose up -d
