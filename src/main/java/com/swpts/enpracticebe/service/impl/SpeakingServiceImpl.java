@@ -2,6 +2,7 @@ package com.swpts.enpracticebe.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.constant.ActivityType;
+import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.dto.request.speaking.SpeakingTopicFilterRequest;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitSpeakingRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
@@ -17,7 +18,6 @@ import com.swpts.enpracticebe.repository.SpeakingAttemptRepository;
 import com.swpts.enpracticebe.repository.SpeakingTopicRepository;
 import com.swpts.enpracticebe.service.SpeakingService;
 import com.swpts.enpracticebe.service.UserActivityLogService;
-import com.swpts.enpracticebe.constant.XpSource;
 import com.swpts.enpracticebe.service.XpService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
@@ -90,7 +90,7 @@ public class SpeakingServiceImpl implements SpeakingService {
     @Override
     public SpeakingTopicResponse getTopicDetail(UUID topicId) {
         SpeakingTopic topic = topicRepository.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
+                .orElseThrow(() -> new NoSuchElementException("Speaking topic not found: " + topicId));
         return speakingMapper.toTopicResponse(topic);
     }
 
@@ -100,7 +100,7 @@ public class SpeakingServiceImpl implements SpeakingService {
         UUID userId = authUtil.getUserId();
 
         SpeakingTopic topic = topicRepository.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Speaking topic not found: " + topicId));
+                .orElseThrow(() -> new NoSuchElementException("Speaking topic not found: " + topicId));
 
         SpeakingAttempt attempt = SpeakingAttempt.builder()
                 .userId(userId)

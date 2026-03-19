@@ -126,6 +126,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                         .userId(log.getUserId())
                         .userName(user.getDisplayName())
                         .activityType(log.getActivityType())
+                        .entityId(log.getEntityId())
                         .entityName(log.getEntityName())
                         .createdAt(log.getCreatedAt())
                         .build())
