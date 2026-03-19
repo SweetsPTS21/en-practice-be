@@ -3,8 +3,7 @@ package com.swpts.enpracticebe.controller;
 import com.swpts.enpracticebe.dto.request.ai.ChatMessageRequest;
 import com.swpts.enpracticebe.dto.request.speaking.SpeakingConversationMessage;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
-import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
-import com.swpts.enpracticebe.dto.response.ai.AiChatResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiChatStreamResponse;
 import com.swpts.enpracticebe.dto.response.speaking.NextQuestionResponse;
 import com.swpts.enpracticebe.dto.response.speaking.SpeakingConversationWsResponse;
 import com.swpts.enpracticebe.service.ConversationSpeakingService;
@@ -27,6 +26,8 @@ import java.util.UUID;
 @Controller
 @RequiredArgsConstructor
 public class WebSocketController {
+    private static final String REALTIME_CHAT_ERROR_MESSAGE = "Xin lỗi nha, hiện tại tôi không thể trả lời tin nhắn của bạn";
+
     private final OpenClawService openClawService;
     private final SimpMessagingTemplate messagingTemplate;
     private final AuthUtil authUtil;
@@ -43,16 +44,17 @@ public class WebSocketController {
             return;
         }
 
+        String topic = "/topic/realtime-chat/" + userId;
+
         try {
-            AiAskResponse result = openClawService.askAi(message.getContent(), userId);
-            AiChatResponse response = AiChatResponse.buildResponse(result.getAnswer());
-            messagingTemplate.convertAndSend("/topic/realtime-chat/" + userId, response);
-            log.info("Sent response to user: {}", userId);
+            openClawService.streamAi(message.getContent(), userId,
+                    event -> messagingTemplate.convertAndSend(topic, event));
+            log.info("Started realtime stream to user: {}", userId);
         } catch (Exception e) {
-            log.error("Error processing chat message: {}", e.getMessage(), e);
-            AiChatResponse errorResponse = AiChatResponse.buildResponse(
-                    "Xin lỗi nha, hiện tại tôi không thể trả lời tin nhắn của bạn");
-            messagingTemplate.convertAndSend("/topic/realtime-chat/" + userId, errorResponse);
+            log.error("Error starting realtime chat stream: {}", e.getMessage(), e);
+            messagingTemplate.convertAndSend(topic,
+                    AiChatStreamResponse.error(UUID.randomUUID().toString(), UUID.randomUUID().toString(),
+                            REALTIME_CHAT_ERROR_MESSAGE));
         }
     }
 
@@ -82,7 +84,6 @@ public class WebSocketController {
                 result = conversationService.submitTurn(message.getConversationId(), turnReq, userId);
             }
 
-            // Build WS response
             SpeakingConversationWsResponse wsResponse = SpeakingConversationWsResponse.builder()
                     .type(result.isConversationComplete() ? "CONVERSATION_COMPLETE" : "NEXT_QUESTION")
                     .conversationId(result.getConversationId())
@@ -93,7 +94,6 @@ public class WebSocketController {
                     .timestamp(Instant.now())
                     .build();
 
-            // Synthesize TTS audio for AI question
             if (result.getAiQuestion() != null && !result.getAiQuestion().isBlank()) {
                 try {
                     byte[] audioBytes = textToSpeechService.synthesize(result.getAiQuestion(), null);

@@ -4,43 +4,53 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.dto.request.ai.OpenClawRequest;
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
+import com.swpts.enpracticebe.dto.response.ai.AiChatStreamResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiExplainResponse;
 import com.swpts.enpracticebe.dto.response.ai.OpenClawResponse;
+import com.swpts.enpracticebe.dto.response.ai.OpenClawStreamResponse;
 import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
 import com.swpts.enpracticebe.service.OpenClawService;
 import com.swpts.enpracticebe.util.AuthUtil;
 import com.swpts.enpracticebe.util.JsonUtil;
 import com.swpts.enpracticebe.util.PromptBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
 public class OpenClawServiceImpl implements OpenClawService {
+    private static final String OPENCLAW_COMPLETION_URI = "/v1/chat/completions";
+    private static final String STREAM_DONE_MARKER = "[DONE]";
+    private static final String REALTIME_CHAT_ERROR_MESSAGE = "Xin lỗi nha, hiện tại tôi không thể trả lời tin nhắn của bạn";
+
     private final WebClient webClient;
     private final AuthUtil authUtil;
     private final ObjectMapper objectMapper;
+    private final ConcurrentMap<UUID, Disposable> activeStreams = new ConcurrentHashMap<>();
 
-    public OpenClawServiceImpl(@Value("${openclaw.gateway.url:http://127.0.0.1:18789}") String gatewayUrl,
-                               @Value("${openclaw.gateway.token:abc}") String gatewayToken,
-                               WebClient.Builder builder,
+    public OpenClawServiceImpl(@Qualifier("openClawWebClient") WebClient webClient,
                                AuthUtil authUtil,
                                ObjectMapper objectMapper) {
+        this.webClient = webClient;
         this.authUtil = authUtil;
         this.objectMapper = objectMapper;
-        this.webClient = builder
-                .baseUrl(gatewayUrl)
-                .defaultHeader("Authorization", "Bearer " + gatewayToken)
-                .defaultHeader("Content-Type", "application/json")
-                .defaultHeader("x-openclaw-agent-id", "main")
-                .build();
     }
 
     private OpenClawRequest getSystemRequest(String prompt) {
@@ -75,7 +85,7 @@ public class OpenClawServiceImpl implements OpenClawService {
 
     private String getOpenClawResponse(OpenClawRequest request) {
         OpenClawResponse response = webClient.post()
-                .uri("/v1/chat/completions")
+                .uri(OPENCLAW_COMPLETION_URI)
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(OpenClawResponse.class)
@@ -143,11 +153,115 @@ public class OpenClawServiceImpl implements OpenClawService {
     }
 
     @Override
+    public void streamAi(String prompt, UUID userId, Consumer<AiChatStreamResponse> eventConsumer) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        Objects.requireNonNull(eventConsumer, "eventConsumer must not be null");
+
+        cancelActiveStream(userId);
+
+        String requestId = UUID.randomUUID().toString();
+        String messageId = UUID.randomUUID().toString();
+        StringBuilder accumulatedContent = new StringBuilder();
+
+        eventConsumer.accept(AiChatStreamResponse.start(requestId, messageId));
+
+        OpenClawRequest request = getOpenClawRequest(prompt, userId);
+        request.setStream(true);
+
+        AtomicReference<Disposable> streamRef = new AtomicReference<>();
+
+        Flux<String> contentFlux = webClient.post()
+                .uri(OPENCLAW_COMPLETION_URI)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.TEXT_EVENT_STREAM)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {
+                })
+                .map(ServerSentEvent::data)
+                .filter(Objects::nonNull)
+                .takeUntil(STREAM_DONE_MARKER::equals)
+                .filter(data -> !STREAM_DONE_MARKER.equals(data))
+                .map(this::parseStreamChunk)
+                .handle((chunk, sink) -> {
+                    String content = extractDeltaContent(chunk);
+                    if (content != null && !content.isEmpty()) {
+                        sink.next(content);
+                    }
+                });
+
+        Disposable disposable = contentFlux
+                .publishOn(Schedulers.boundedElastic())
+                .subscribe(content -> {
+                            accumulatedContent.append(content);
+                            eventConsumer.accept(AiChatStreamResponse.delta(requestId, messageId, content));
+                        }, error -> {
+                            clearActiveStream(userId, streamRef.get());
+                            log.error("Error streaming realtime chat for user {}: {}", userId, error.getMessage(), error);
+                            eventConsumer.accept(AiChatStreamResponse.error(requestId, messageId, REALTIME_CHAT_ERROR_MESSAGE));
+                        }, () -> {
+                            clearActiveStream(userId, streamRef.get());
+                            eventConsumer.accept(AiChatStreamResponse.complete(
+                                    requestId,
+                                    messageId,
+                                    accumulatedContent.toString()));
+                            log.info("Completed realtime chat stream for user {}", userId);
+                        }
+                );
+
+        streamRef.set(disposable);
+        activeStreams.put(userId, disposable);
+    }
+
+    @Override
     public AiAskResponse systemCallAi(String prompt) {
         String response = getOpenClawResponse(getSystemRequest(prompt));
 
         return AiAskResponse.builder()
                 .answer(response)
                 .build();
+    }
+
+    private OpenClawStreamResponse parseStreamChunk(String rawChunk) {
+        try {
+            return objectMapper.readValue(rawChunk, OpenClawStreamResponse.class);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse OpenClaw stream chunk", e);
+        }
+    }
+
+    private String extractDeltaContent(OpenClawStreamResponse chunk) {
+        if (chunk == null || chunk.getChoices() == null) {
+            return null;
+        }
+
+        StringBuilder delta = new StringBuilder();
+        for (OpenClawStreamResponse.Choice choice : chunk.getChoices()) {
+            if (choice == null || choice.getDelta() == null) {
+                continue;
+            }
+            String content = choice.getDelta().getContent();
+            if (content != null) {
+                delta.append(content);
+            }
+        }
+
+        return delta.isEmpty() ? null : delta.toString();
+    }
+
+    private void cancelActiveStream(UUID userId) {
+        Disposable previous = activeStreams.remove(userId);
+        if (previous != null && !previous.isDisposed()) {
+            previous.dispose();
+            log.info("Cancelled previous realtime chat stream for user {}", userId);
+        }
+    }
+
+    private void clearActiveStream(UUID userId, Disposable disposable) {
+        if (disposable == null) {
+            return;
+        }
+
+        activeStreams.computeIfPresent(userId, (key, current) -> current == disposable ? null : current);
     }
 }
