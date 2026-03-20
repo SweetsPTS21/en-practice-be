@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.OptionalDouble;
 import java.util.UUID;
 
@@ -39,10 +40,10 @@ public class ConversationGradingService {
     public void gradeConversationAsync(UUID conversationId, UUID userId) {
         try {
             SpeakingConversation conversation = conversationRepository.findById(conversationId)
-                    .orElseThrow(() -> new RuntimeException("Conversation not found: " + conversationId));
+                    .orElseThrow(() -> new NoSuchElementException("Conversation not found: " + conversationId));
 
             SpeakingTopic topic = topicRepository.findById(conversation.getTopicId())
-                    .orElseThrow(() -> new RuntimeException("Topic not found"));
+                    .orElseThrow(() -> new NoSuchElementException("Topic not found"));
 
             conversation.setStatus(SpeakingConversation.ConversationStatus.GRADING);
             conversationRepository.save(conversation);

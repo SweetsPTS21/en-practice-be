@@ -2,6 +2,7 @@ package com.swpts.enpracticebe.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swpts.enpracticebe.constant.ActivityType;
+import com.swpts.enpracticebe.constant.TurnType;
 import com.swpts.enpracticebe.dto.request.speaking.SubmitTurnRequest;
 import com.swpts.enpracticebe.dto.response.PageResponse;
 import com.swpts.enpracticebe.dto.response.ai.AiAskResponse;
@@ -32,6 +33,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.Instant;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -54,10 +57,10 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     @Transactional
     public NextQuestionResponse startConversation(UUID topicId, UUID userId) {
         SpeakingTopic topic = topicRepository.findById(topicId)
-                .orElseThrow(() -> new RuntimeException("Topic not found: " + topicId));
+                .orElseThrow(() -> new NoSuchElementException("Topic not found: " + topicId));
 
         if (!topic.getIsPublished()) {
-            throw new RuntimeException("Topic is not published");
+            throw new NoSuchElementException("Topic is not published");
         }
 
         SpeakingConversation conversation = SpeakingConversation.builder()
@@ -72,7 +75,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 .conversationId(conversation.getId())
                 .turnNumber(1)
                 .aiQuestion(topic.getQuestion())
-                .turnType("QUESTION")
+                .turnType(TurnType.QUESTION.name())
                 .followUpIndex(0)
                 .build();
         turnRepository.save(firstTurn);
@@ -80,7 +83,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         conversation.setTotalTurns(1);
         conversationRepository.save(conversation);
 
-        userActivityLogService.logActivity(userId, ActivityType.SPEAKING_CONVERSATION_ATTEMPT, topic.getId(), topic.getQuestion());
+        userActivityLogService.logActivity(userId, ActivityType.SPEAKING_CONVERSATION_ATTEMPT, conversation.getId(), topic.getQuestion());
 
         int totalExpectedQuestions = 1 + (topic.getFollowUpQuestions() != null ? topic.getFollowUpQuestions().size() : 0);
 
@@ -88,7 +91,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 .conversationId(conversation.getId())
                 .turnNumber(1)
                 .aiQuestion(topic.getQuestion())
-                .turnType("QUESTION")
+                .turnType(TurnType.QUESTION.name())
                 .lastTurn(totalExpectedQuestions <= 1)
                 .conversationComplete(false)
                 .build();
@@ -98,14 +101,14 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
     @Transactional
     public NextQuestionResponse submitTurn(UUID conversationId, SubmitTurnRequest request, UUID userId) {
         SpeakingConversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
-                .orElseThrow(() -> new RuntimeException("Conversation not found: " + conversationId));
+                .orElseThrow(() -> new NoSuchElementException("Conversation not found: " + conversationId));
 
         if (conversation.getStatus() != SpeakingConversation.ConversationStatus.IN_PROGRESS) {
-            throw new RuntimeException("Conversation is not in progress");
+            throw new NoSuchElementException("Conversation is not in progress");
         }
 
         SpeakingTopic topic = topicRepository.findById(conversation.getTopicId())
-                .orElseThrow(() -> new RuntimeException("Topic not found"));
+                .orElseThrow(() -> new NoSuchElementException("Topic not found"));
 
         List<SpeakingConversationTurn> existingTurns =
                 turnRepository.findByConversationIdOrderByTurnNumberAsc(conversationId);
@@ -114,7 +117,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         SpeakingConversationTurn currentTurn = existingTurns.stream()
                 .filter(t -> t.getUserTranscript() == null || t.getUserTranscript().isBlank())
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("No pending turn found"));
+                .orElseThrow(() -> new NoSuchElementException("No pending turn found"));
 
         currentTurn.setUserTranscript(request.getTranscript());
         currentTurn.setAudioUrl(request.getAudioUrl());
@@ -144,14 +147,14 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
         int totalExpectedQuestions = 1 + (followUps != null ? followUps.size() : 0);
 
         long answeredQuestionCount = existingTurns.stream()
-                .filter(t -> "QUESTION".equals(t.getTurnType())
+                .filter(t -> TurnType.QUESTION.name().equals(t.getTurnType())
                         && t.getUserTranscript() != null
                         && !t.getUserTranscript().isBlank())
                 .count();
 
         // Current follow-up index from the last QUESTION turn
         int currentFollowUpIndex = existingTurns.stream()
-                .filter(t -> "QUESTION".equals(t.getTurnType()))
+                .filter(t -> TurnType.QUESTION.name().equals(t.getTurnType()))
                 .mapToInt(t -> t.getFollowUpIndex() != null ? t.getFollowUpIndex() : 0)
                 .max()
                 .orElse(0);
@@ -180,7 +183,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                     .conversationId(conversationId)
                     .turnNumber(currentTurn.getTurnNumber())
                     .aiQuestion(null)
-                    .turnType("QUESTION")
+                    .turnType(TurnType.QUESTION.name())
                     .lastTurn(true)
                     .conversationComplete(true)
                     .build();
@@ -204,7 +207,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 .turnNumber(nextTurnNumber)
                 .aiQuestion(aiResult.response)
                 .turnType(aiResult.turnType)
-                .followUpIndex("HINT".equals(aiResult.turnType) ? currentFollowUpIndex : nextFollowUpIndex)
+                .followUpIndex(TurnType.HINT.name().equals(aiResult.turnType) ? currentFollowUpIndex : nextFollowUpIndex)
                 .build();
         turnRepository.save(nextTurn);
 
@@ -213,7 +216,7 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
         // isLastTurn only if this was a QUESTION and it covers the final follow-up
         boolean isLastTurn = false;
-        if ("QUESTION".equals(aiResult.turnType)) {
+        if (TurnType.QUESTION.name().equals(aiResult.turnType)) {
             isLastTurn = (nextFollowUpIndex + 1) >= totalExpectedQuestions;
         }
 
@@ -229,8 +232,12 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
 
     @Override
     public ConversationResponse getConversation(UUID conversationId, UUID userId) {
-        SpeakingConversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
-                .orElseThrow(() -> new RuntimeException("Conversation not found"));
+        SpeakingConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(() -> new NoSuchElementException("Conversation not found"));
+
+        if (!Objects.equals(userId, conversation.getUserId()) && !authUtil.isAdmin()) {
+            throw new ForbiddenException("Unauthorized: You can only access your own conversation");
+        }
 
         SpeakingTopic topic = topicRepository.findById(conversation.getTopicId()).orElse(null);
         List<SpeakingConversationTurn> turns =
@@ -284,13 +291,13 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
             try {
                 com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
                 com.fasterxml.jackson.databind.JsonNode json = mapper.readTree(raw);
-                String action = json.has("action") ? json.get("action").asText().toUpperCase() : "FOLLOWUP";
+                String action = json.has("action") ? json.get("action").asText().toUpperCase() : TurnType.FOLLOWUP.name();
                 String response = json.has("response") ? json.get("response").asText() : raw;
 
-                if (!"HINT".equals(action) && !"FOLLOWUP".equals(action)) {
-                    action = "FOLLOWUP";
+                if (!TurnType.HINT.name().equals(action) && !TurnType.FOLLOWUP.name().equals(action)) {
+                    action = TurnType.FOLLOWUP.name();
                 }
-                String turnType = "HINT".equals(action) ? "HINT" : "QUESTION";
+                String turnType = TurnType.HINT.name().equals(action) ? TurnType.HINT.name() : TurnType.QUESTION.name();
                 return new AdaptiveResult(turnType, response);
             } catch (Exception parseEx) {
                 log.warn("Failed to parse AI JSON response, treating as FOLLOWUP: {}", parseEx.getMessage());
@@ -298,12 +305,12 @@ public class ConversationSpeakingServiceImpl implements ConversationSpeakingServ
                 if (cleaned.startsWith("\"") && cleaned.endsWith("\"")) {
                     cleaned = cleaned.substring(1, cleaned.length() - 1);
                 }
-                return new AdaptiveResult("QUESTION",
+                return new AdaptiveResult(TurnType.QUESTION.name(),
                         cleaned.isEmpty() ? (nextFollowUp != null ? nextFollowUp : "Could you tell me more?") : cleaned);
             }
         } catch (Exception e) {
             log.warn("AI adaptive response failed, using fallback: {}", e.getMessage());
-            return new AdaptiveResult("QUESTION",
+            return new AdaptiveResult(TurnType.QUESTION.name(),
                     nextFollowUp != null ? nextFollowUp : "Could you elaborate on that?");
         }
     }
