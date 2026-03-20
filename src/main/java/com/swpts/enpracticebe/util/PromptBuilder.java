@@ -3,6 +3,7 @@ package com.swpts.enpracticebe.util;
 import com.swpts.enpracticebe.entity.*;
 
 import java.util.List;
+import java.util.Locale;
 
 public class PromptBuilder {
 
@@ -349,5 +350,179 @@ public class PromptBuilder {
                 history,
                 currentTurn.getUserTranscript(),
                 nextFollowUpSection);
+    }
+
+    public static String buildCustomConversationStartPrompt(String topic,
+                                                            String style,
+                                                            String personality,
+                                                            String expertise) {
+        return String.format("""
+                        You are preparing a live English speaking conversation.
+
+                        Conversation requirements:
+                        - Topic: %s
+                        - Speaking style: %s
+                        - AI personality: %s
+                        - AI expertise: %s
+
+                        Your task:
+                        1. Create a short, natural conversation title in English (max 6 words).
+                        2. Write the first AI message that opens the conversation naturally.
+
+                        Rules for the opening message:
+                        - Sound like a real conversation partner, not a teacher giving instructions
+                        - Stay aligned with the requested style, personality, and expertise
+                        - Keep it concise: 2-4 sentences
+                        - End with a question that invites the user to respond
+                        - Use English only
+
+                        Respond with EXACTLY this JSON format:
+                        {
+                          "title": "Short title here",
+                          "opening_message": "First AI message here"
+                        }
+                        """,
+                topic,
+                style,
+                personality,
+                expertise);
+    }
+
+    public static String buildCustomConversationReplyPrompt(String topic,
+                                                            String style,
+                                                            String personality,
+                                                            String expertise,
+                                                            List<CustomSpeakingConversationTurn> turns,
+                                                            String latestUserAnswer,
+                                                            int remainingUserTurns) {
+        StringBuilder history = new StringBuilder();
+        for (CustomSpeakingConversationTurn turn : turns) {
+            history.append("AI: ").append(turn.getAiMessage()).append("\n");
+            if (turn.getUserTranscript() != null && !turn.getUserTranscript().isBlank()) {
+                history.append("User: ").append(turn.getUserTranscript()).append("\n");
+            }
+        }
+
+        return String.format("""
+                        You are an AI conversation partner having a spoken English practice conversation.
+
+                        Conversation setup:
+                        - Topic: %s
+                        - Style: %s
+                        - Personality: %s
+                        - Expertise: %s
+                        - Remaining user turns before auto-stop: %d
+
+                        Conversation history:
+                        %s
+
+                        User's latest answer:
+                        %s
+
+                        Your task:
+                        - Reply naturally in English
+                        - Keep continuity with the conversation history
+                        - Stay aligned with the requested style, personality, and expertise
+                        - Encourage the user to keep speaking
+                        - End with a natural follow-up question unless the conversation already feels complete
+                        - Keep it concise: 2-4 sentences
+
+                        Respond with EXACTLY this JSON format:
+                        {
+                          "response": "Your next AI message here"
+                        }
+                        """,
+                topic,
+                style,
+                personality,
+                expertise,
+                remainingUserTurns,
+                history,
+                latestUserAnswer);
+    }
+
+    public static String buildCustomConversationGradingPrompt(String topic,
+                                                              String title,
+                                                              List<CustomSpeakingConversationTurn> turns) {
+        StringBuilder transcript = new StringBuilder();
+        for (CustomSpeakingConversationTurn turn : turns) {
+            transcript.append("AI: ").append(turn.getAiMessage()).append("\n");
+            if (turn.getUserTranscript() != null && !turn.getUserTranscript().isBlank()) {
+                transcript.append("User: ").append(turn.getUserTranscript()).append("\n");
+            }
+            transcript.append("\n");
+        }
+
+        List<CustomSpeakingConversationTurn> turnsWithAnalytics = turns.stream()
+                .filter(t -> t.getWordCount() != null && t.getWordCount() > 0)
+                .toList();
+
+        String analyticsSection = "";
+        if (!turnsWithAnalytics.isEmpty()) {
+            double avgWpm = turnsWithAnalytics.stream()
+                    .filter(t -> t.getWordsPerMinute() != null)
+                    .mapToDouble(CustomSpeakingConversationTurn::getWordsPerMinute)
+                    .average().orElse(0);
+            int totalPauses = turnsWithAnalytics.stream()
+                    .filter(t -> t.getPauseCount() != null)
+                    .mapToInt(CustomSpeakingConversationTurn::getPauseCount).sum();
+            int totalLongPauses = turnsWithAnalytics.stream()
+                    .filter(t -> t.getLongPauseCount() != null)
+                    .mapToInt(CustomSpeakingConversationTurn::getLongPauseCount).sum();
+            int totalFillers = turnsWithAnalytics.stream()
+                    .filter(t -> t.getFillerWordCount() != null)
+                    .mapToInt(CustomSpeakingConversationTurn::getFillerWordCount).sum();
+            double avgConf = turnsWithAnalytics.stream()
+                    .filter(t -> t.getAvgWordConfidence() != null)
+                    .mapToDouble(CustomSpeakingConversationTurn::getAvgWordConfidence)
+                    .average().orElse(0);
+
+            analyticsSection = buildSpeakingAnalyticsSection(
+                    avgWpm, totalPauses, totalLongPauses, null, totalFillers, avgConf, null);
+        }
+
+        return String.format("""
+                        You are evaluating an English speaking practice conversation.
+
+                        Conversation title: %s
+                        Topic: %s
+
+                        Full transcript:
+                        %s
+                        %s
+                        Score the user's speaking performance using these general criteria (0.0 to 10.0, allow 0.5 increments):
+                        1. Fluency: how smoothly the user speaks and keeps going
+                        2. Vocabulary: range and appropriateness of words used
+                        3. Coherence: how clearly and logically the user expresses ideas
+                        4. Pronunciation: how understandable the spoken English is
+
+                        Also provide:
+                        - A brief summary of the user's overall performance
+                        - Key strengths
+                        - Main improvement areas
+                        - 3 practical next-step tips
+
+                        Respond with EXACTLY this JSON format:
+                        {
+                          "fluency": 7.0,
+                          "vocabulary": 6.5,
+                          "coherence": 7.0,
+                          "pronunciation": 6.5,
+                          "overall_score": 7.0,
+                          "feedback": "Markdown feedback here"
+                        }
+                        """,
+                title,
+                topic,
+                transcript,
+                analyticsSection);
+    }
+
+    public static String humanizeEnumValue(Enum<?> value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
     }
 }

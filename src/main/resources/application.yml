@@ -52,3 +52,7 @@ openclaw:
     pending-acquire-timeout-ms: 5000
     max-idle-time-ms: 60000
     max-life-time-ms: 300000
+
+speaking:
+  custom-conversation:
+    max-user-turns: ${CUSTOM_SPEAKING_CONVERSATION_MAX_USER_TURNS:100}
