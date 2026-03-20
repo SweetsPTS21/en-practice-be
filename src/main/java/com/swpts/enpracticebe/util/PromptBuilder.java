@@ -1,5 +1,8 @@
 package com.swpts.enpracticebe.util;
 
+import com.swpts.enpracticebe.constant.CustomConversationExpertise;
+import com.swpts.enpracticebe.constant.CustomConversationPersonality;
+import com.swpts.enpracticebe.constant.CustomConversationStyle;
 import com.swpts.enpracticebe.entity.*;
 
 import java.util.List;
@@ -353,11 +356,12 @@ public class PromptBuilder {
     }
 
     public static String buildCustomConversationStartPrompt(String topic,
-                                                            String style,
-                                                            String personality,
-                                                            String expertise) {
+                                                            CustomConversationStyle style,
+                                                            CustomConversationPersonality personality,
+                                                            CustomConversationExpertise expertise) {
         return String.format("""
                         You are preparing a live English speaking conversation.
+                        The exact text you write will be used as a spoken transcript for Google TTS, so it must sound natural out loud.
 
                         Conversation requirements:
                         - Topic: %s
@@ -372,9 +376,14 @@ public class PromptBuilder {
                         Rules for the opening message:
                         - Sound like a real conversation partner, not a teacher giving instructions
                         - Stay aligned with the requested style, personality, and expertise
-                        - Keep it concise: 2-4 sentences
+                        - Write for speech, not for reading: use contractions, natural pauses with punctuation, and varied sentence lengths
+                        - Let the wording show light emotion when it fits: curiosity, warmth, surprise, confidence, excitement, or empathy
+                        - You may use occasional spoken markers such as "well," "oh," "hmm," "honestly," or "right," but only when they feel natural
+                        - Keep it concise: 2-4 sentences, around 20-60 words total
                         - End with a question that invites the user to respond
                         - Use English only
+                        - No markdown, no bullet points, no emojis, no stage directions, no speaker labels, and no quotation marks around the whole message
+                        %s
 
                         Respond with EXACTLY this JSON format:
                         {
@@ -383,15 +392,16 @@ public class PromptBuilder {
                         }
                         """,
                 topic,
-                style,
-                personality,
-                expertise);
+                humanizeEnumValue(style),
+                humanizeEnumValue(personality),
+                humanizeEnumValue(expertise),
+                buildCustomConversationToneGuidance(style, personality, expertise, false, 0));
     }
 
     public static String buildCustomConversationReplyPrompt(String topic,
-                                                            String style,
-                                                            String personality,
-                                                            String expertise,
+                                                            CustomConversationStyle style,
+                                                            CustomConversationPersonality personality,
+                                                            CustomConversationExpertise expertise,
                                                             List<CustomSpeakingConversationTurn> turns,
                                                             String latestUserAnswer,
                                                             int remainingUserTurns) {
@@ -405,6 +415,7 @@ public class PromptBuilder {
 
         return String.format("""
                         You are an AI conversation partner having a spoken English practice conversation.
+                        The exact text you write will be used directly as a spoken transcript for Google TTS, so it must sound excellent when spoken aloud.
 
                         Conversation setup:
                         - Topic: %s
@@ -423,9 +434,18 @@ public class PromptBuilder {
                         - Reply naturally in English
                         - Keep continuity with the conversation history
                         - Stay aligned with the requested style, personality, and expertise
+                        - Sound like one real, emotionally present human speaking to another
+                        - Write for speech, not for reading: use contractions, natural pauses with punctuation, and varied sentence lengths
+                        - Let the wording show light emotion or attitude when it fits: curiosity, warmth, surprise, confidence, doubt, excitement, or empathy
+                        - You may use occasional spoken markers such as "well," "oh," "hmm," "honestly," "right," "wait," or "I mean," but do not force them and do not use them in every sentence
+                        - React to what the user actually said instead of giving generic praise
                         - Encourage the user to keep speaking
                         - End with a natural follow-up question unless the conversation already feels complete
-                        - Keep it concise: 2-4 sentences
+                        - If only 1 user turn remains, make the follow-up feel like a satisfying closing turn
+                        - Keep it concise: 2-4 sentences, around 25-70 words total
+                        - Make it clean for TTS: no markdown, no bullet points, no emojis, no stage directions, no speaker labels, no slash-separated options, and no quotation marks around the whole response
+                        - Avoid robotic, overly formal, or repetitive teacher-like phrasing
+                        %s
 
                         Respond with EXACTLY this JSON format:
                         {
@@ -433,12 +453,13 @@ public class PromptBuilder {
                         }
                         """,
                 topic,
-                style,
-                personality,
-                expertise,
+                humanizeEnumValue(style),
+                humanizeEnumValue(personality),
+                humanizeEnumValue(expertise),
                 remainingUserTurns,
                 history,
-                latestUserAnswer);
+                latestUserAnswer,
+                buildCustomConversationToneGuidance(style, personality, expertise, true, remainingUserTurns));
     }
 
     public static String buildCustomConversationGradingPrompt(String topic,
@@ -524,5 +545,76 @@ public class PromptBuilder {
         }
         String normalized = value.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
+    }
+
+    private static String buildCustomConversationToneGuidance(CustomConversationStyle style,
+                                                              CustomConversationPersonality personality,
+                                                              CustomConversationExpertise expertise,
+                                                              boolean replyMode,
+                                                              int remainingUserTurns) {
+        StringBuilder guidance = new StringBuilder();
+        guidance.append("Additional tone guidance:\n");
+
+        if (style == CustomConversationStyle.PROFESSIONAL
+                || expertise == CustomConversationExpertise.BUSINESS
+                || expertise == CustomConversationExpertise.EDUCATION) {
+            guidance.append("- Keep the wording polished, composed, and socially appropriate.\n");
+        }
+
+        if (style == CustomConversationStyle.PLAYFUL
+                || personality == CustomConversationPersonality.HUMOROUS
+                || expertise == CustomConversationExpertise.ENTERTAINMENT) {
+            guidance.append("- Add light banter, playful reactions, or cheeky phrasing when it feels natural.\n");
+        }
+
+        if (style == CustomConversationStyle.FLIRTY
+                || personality == CustomConversationPersonality.FLIRTY
+                || expertise == CustomConversationExpertise.RELATIONSHIPS) {
+            guidance.append("- You can sound charming, teasing, and a little flirty, but keep it consensual and not explicit.\n");
+        }
+
+        if (style == CustomConversationStyle.DEEP
+                || expertise == CustomConversationExpertise.PSYCHOLOGY) {
+            guidance.append("- Ask more reflective, emotionally aware questions and sound thoughtful.\n");
+        }
+
+        if (style == CustomConversationStyle.DEBATE
+                || style == CustomConversationStyle.CHALLENGING
+                || personality == CustomConversationPersonality.BOLD
+                || personality == CustomConversationPersonality.STRAIGHTFORWARD) {
+            guidance.append("- It is fine to be more direct, skeptical, or provocative, as long as the reply still feels conversational.\n");
+        }
+
+        if (style == CustomConversationStyle.STREET
+                || style == CustomConversationStyle.UNFILTERED
+                || personality == CustomConversationPersonality.EDGY
+                || personality == CustomConversationPersonality.REBELLIOUS
+                || expertise == CustomConversationExpertise.GAMING
+                || expertise == CustomConversationExpertise.SOCIAL_MEDIA
+                || expertise == CustomConversationExpertise.STREET_CULTURE) {
+            guidance.append("- You may occasionally use slang, blunt phrasing, or very light profanity such as \"damn,\" \"hell,\" or \"crap\" if it genuinely improves realism.\n");
+            guidance.append("- Keep profanity sparse and natural. Never use slurs, hate speech, threats, or abusive harassment.\n");
+        } else {
+            guidance.append("- Avoid profanity and keep the wording clean.\n");
+        }
+
+        if (personality == CustomConversationPersonality.EMPATHETIC
+                || personality == CustomConversationPersonality.PATIENT) {
+            guidance.append("- Let the reply feel warm, emotionally attuned, and supportive.\n");
+        }
+
+        if (personality == CustomConversationPersonality.CONFIDENT) {
+            guidance.append("- Speak with certainty and strong opinions when reacting, without sounding arrogant.\n");
+        }
+
+        if (personality == CustomConversationPersonality.CURIOUS) {
+            guidance.append("- Sound genuinely intrigued and ask sharper follow-up questions.\n");
+        }
+
+        if (replyMode && remainingUserTurns == 1) {
+            guidance.append("- This is the setup for the user's final turn, so make the question feel more memorable, personal, or high-payoff.\n");
+        }
+
+        return guidance.toString().trim();
     }
 }

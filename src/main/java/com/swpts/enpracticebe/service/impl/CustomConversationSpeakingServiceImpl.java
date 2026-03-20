@@ -43,6 +43,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class CustomConversationSpeakingServiceImpl implements CustomConversationSpeakingService {
+    private static final String DEFAULT_OPENING_MESSAGE =
+            "Oh, this topic is interesting. I am curious, what is the first thing that comes to mind for you?";
+    private static final String DEFAULT_REPLY_MESSAGE =
+            "Hmm, that is interesting. What is the part of it that stands out most to you?";
 
     private final CustomSpeakingConversationRepository conversationRepository;
     private final CustomSpeakingConversationTurnRepository turnRepository;
@@ -59,9 +63,9 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
         String topic = request.getTopic().trim();
         String startPrompt = PromptBuilder.buildCustomConversationStartPrompt(
                 topic,
-                PromptBuilder.humanizeEnumValue(request.getStyle()),
-                PromptBuilder.humanizeEnumValue(request.getPersonality()),
-                PromptBuilder.humanizeEnumValue(request.getExpertise()));
+                request.getStyle(),
+                request.getPersonality(),
+                request.getExpertise());
 
         CustomSpeakingConversation conversation = CustomSpeakingConversation.builder()
                 .userId(userId)
@@ -69,6 +73,7 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
                 .topic(topic)
                 .style(request.getStyle())
                 .personality(request.getPersonality())
+                .voiceName(request.getVoiceName())
                 .expertise(request.getExpertise())
                 .gradingEnabled(Boolean.TRUE.equals(request.getGradingEnabled()))
                 .status(CustomSpeakingConversation.ConversationStatus.IN_PROGRESS)
@@ -209,19 +214,27 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
         try {
             AiAskResponse aiResponse = openClawService.askFreestyleConversationAi(prompt, userId, conversationId);
             String raw = aiResponse.getAnswer().trim();
-            JsonNode json = objectMapper.readTree(JsonUtil.extractJson(raw));
+            try {
+                JsonNode json = objectMapper.readTree(JsonUtil.extractJson(raw));
 
-            String title = textOrFallback(json, "title", buildFallbackTitle(topic));
-            String openingMessage = textOrFallback(
-                    json,
-                    "opening_message",
-                    "Let's talk about this topic together. What interests you most about it?");
-            return new StartPayload(title, openingMessage);
+                String title = textOrFallback(json, "title", buildFallbackTitle(topic));
+                String openingMessage = normalizeAiMessage(textOrFallback(
+                        json,
+                        "opening_message",
+                        DEFAULT_OPENING_MESSAGE), DEFAULT_OPENING_MESSAGE);
+                return new StartPayload(title, openingMessage);
+            } catch (Exception parseException) {
+                log.warn("Failed to parse custom conversation start payload JSON, using normalized raw text: {}",
+                        parseException.getMessage());
+                return new StartPayload(
+                        buildFallbackTitle(topic),
+                        normalizeAiMessage(raw, DEFAULT_OPENING_MESSAGE));
+            }
         } catch (Exception e) {
             log.warn("Failed to generate custom conversation start payload, using fallback: {}", e.getMessage());
             return new StartPayload(
                     buildFallbackTitle(topic),
-                    "Let's talk about this topic together. What interests you most about it?");
+                    DEFAULT_OPENING_MESSAGE);
         }
     }
 
@@ -231,9 +244,9 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
                                          UUID userId) {
         String prompt = PromptBuilder.buildCustomConversationReplyPrompt(
                 conversation.getTopic(),
-                PromptBuilder.humanizeEnumValue(conversation.getStyle()),
-                PromptBuilder.humanizeEnumValue(conversation.getPersonality()),
-                PromptBuilder.humanizeEnumValue(conversation.getExpertise()),
+                conversation.getStyle(),
+                conversation.getPersonality(),
+                conversation.getExpertise(),
                 turns,
                 latestTranscript,
                 Math.max(conversation.getMaxUserTurns() - conversation.getUserTurnCount(), 0));
@@ -243,11 +256,17 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
                     userId,
                     conversation.getId());
             String raw = aiResponse.getAnswer().trim();
-            JsonNode json = objectMapper.readTree(JsonUtil.extractJson(raw));
-            return textOrFallback(json, "response", raw);
+            try {
+                JsonNode json = objectMapper.readTree(JsonUtil.extractJson(raw));
+                return normalizeAiMessage(textOrFallback(json, "response", raw), DEFAULT_REPLY_MESSAGE);
+            } catch (Exception parseException) {
+                log.warn("Failed to parse custom conversation reply JSON, using normalized raw text: {}",
+                        parseException.getMessage());
+                return normalizeAiMessage(raw, DEFAULT_REPLY_MESSAGE);
+            }
         } catch (Exception e) {
             log.warn("Failed to generate custom conversation reply, using fallback: {}", e.getMessage());
-            return "That is interesting. Could you tell me a bit more about that?";
+            return DEFAULT_REPLY_MESSAGE;
         }
     }
 
@@ -318,6 +337,7 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
                 .topic(conversation.getTopic())
                 .style(conversation.getStyle())
                 .personality(conversation.getPersonality())
+                .voiceName(conversation.getVoiceName())
                 .expertise(conversation.getExpertise())
                 .gradingEnabled(conversation.getGradingEnabled())
                 .status(conversation.getStatus().name())
@@ -352,6 +372,7 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
                 .status(conversation.getStatus().name())
                 .userTurnCount(conversation.getUserTurnCount())
                 .maxUserTurns(conversation.getMaxUserTurns())
+                .voiceName(conversation.getVoiceName())
                 .build();
     }
 
@@ -383,6 +404,40 @@ public class CustomConversationSpeakingServiceImpl implements CustomConversation
             }
         }
         return fallback;
+    }
+
+    private String normalizeAiMessage(String message, String fallback) {
+        if (message == null || message.isBlank()) {
+            return fallback;
+        }
+
+        String normalized = message.trim()
+                .replace("```json", " ")
+                .replace("```", " ")
+                .replaceAll("(?i)^(response|ai|assistant|speaker)\\s*[:\\-]\\s*", "")
+                .replaceAll("\\s+([,.!?])", "$1")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        normalized = stripWrappingQuotes(normalized);
+        return normalized.isBlank() ? fallback : normalized;
+    }
+
+    private String stripWrappingQuotes(String message) {
+        String normalized = message;
+        while (normalized.length() >= 2) {
+            char first = normalized.charAt(0);
+            char last = normalized.charAt(normalized.length() - 1);
+            boolean wrappedInDoubleQuotes = first == '"' && last == '"';
+            boolean wrappedInSingleQuotes = first == '\'' && last == '\'';
+
+            if (!wrappedInDoubleQuotes && !wrappedInSingleQuotes) {
+                break;
+            }
+
+            normalized = normalized.substring(1, normalized.length() - 1).trim();
+        }
+        return normalized;
     }
 
     private record StartPayload(String title, String openingMessage) {

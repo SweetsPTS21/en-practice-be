@@ -1,5 +1,6 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.constant.VoiceName;
 import com.swpts.enpracticebe.service.TextToSpeechService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,70 +18,82 @@ import java.util.Map;
 @Service
 public class TextToSpeechServiceImpl implements TextToSpeechService {
 
-        private final WebClient ttsWebClient;
-        private final String defaultVoiceName;
-        private final String defaultLanguageCode;
+    private final WebClient ttsWebClient;
+    private final String defaultVoiceName;
 
-        public TextToSpeechServiceImpl(
-                        @Qualifier("ttsWebClient") WebClient ttsWebClient,
-                        @Value("${tts.voice-name:en-US-Neural2-J}") String defaultVoiceName,
-                        @Value("${tts.language-code:en-US}") String defaultLanguageCode) {
-                this.ttsWebClient = ttsWebClient;
-                this.defaultVoiceName = defaultVoiceName;
-                this.defaultLanguageCode = defaultLanguageCode;
+    public TextToSpeechServiceImpl(
+            @Qualifier("ttsWebClient") WebClient ttsWebClient,
+            @Value("${tts.voice-name:en-US-Neural2-J}") String defaultVoiceName) {
+        this.ttsWebClient = ttsWebClient;
+        this.defaultVoiceName = defaultVoiceName;
+    }
+
+    @Override
+    public byte[] synthesize(String text, VoiceName voiceName) {
+        VoiceName resolvedVoice = resolveVoice(voiceName);
+        log.debug("Synthesizing text: '{}' with voice: {}", text, resolvedVoice);
+        return callTtsApi(text, resolvedVoice, 1.0);
+    }
+
+    @Override
+    @Cacheable(value = "ttsVocabulary", key = "#word.trim().toLowerCase()")
+    public byte[] synthesizeVocabulary(String word) {
+        if (!StringUtils.hasText(word)) {
+            throw new IllegalArgumentException("Vocabulary word must not be empty");
         }
 
-        @Override
-        public byte[] synthesize(String text, String voiceName) {
-                String selectedVoice = (StringUtils.hasText(voiceName) ? voiceName : defaultVoiceName);
+        String trimmedWord = word.trim();
+        log.debug("Synthesizing vocabulary word: '{}'", trimmedWord);
+        return callTtsApi(trimmedWord, resolveVoice(null), 1.0);
+    }
 
-                log.debug("Synthesizing text: '{}' with voice: {}", text, selectedVoice);
-                return callTtsApi(text, selectedVoice, 1.0);
+    private VoiceName resolveVoice(VoiceName requestedVoice) {
+        if (requestedVoice != null) {
+            return requestedVoice;
         }
 
-        @Override
-        @Cacheable(value = "ttsVocabulary", key = "#word.trim().toLowerCase()")
-        public byte[] synthesizeVocabulary(String word) {
-                if (!StringUtils.hasText(word)) {
-                        throw new IllegalArgumentException("Vocabulary word must not be empty");
-                }
-
-                String trimmedWord = word.trim();
-                log.debug("Synthesizing vocabulary word: '{}'", trimmedWord);
-                return callTtsApi(trimmedWord, defaultVoiceName, 0.8);
+        for (VoiceName candidate : VoiceName.values()) {
+            if (candidate.name().equalsIgnoreCase(defaultVoiceName)
+                    || candidate.getValue().equalsIgnoreCase(defaultVoiceName)) {
+                return candidate;
+            }
         }
 
-        private byte[] callTtsApi(String text, String voiceName, double speakingRate) {
-                Map<String, Object> input = new LinkedHashMap<>();
-                input.put("text", text);
+        log.warn("Unknown default TTS voice '{}', falling back to {}", defaultVoiceName, VoiceName.US_NEURAL_J);
+        return VoiceName.US_NEURAL_J;
+    }
 
-                Map<String, Object> voice = new LinkedHashMap<>();
-                voice.put("languageCode", defaultLanguageCode);
-                voice.put("name", voiceName);
+    private byte[] callTtsApi(String text, VoiceName voiceName, double speakingRate) {
+        Map<String, Object> input = new LinkedHashMap<>();
+        input.put("text", text);
 
-                Map<String, Object> audioConfig = new LinkedHashMap<>();
-                audioConfig.put("audioEncoding", "MP3");
-                audioConfig.put("speakingRate", speakingRate);
-                audioConfig.put("pitch", 0.0);
+        Map<String, Object> voice = new LinkedHashMap<>();
+        voice.put("languageCode", voiceName.getCode());
+        voice.put("name", voiceName.getValue());
 
-                Map<String, Object> requestBody = new LinkedHashMap<>();
-                requestBody.put("input", input);
-                requestBody.put("voice", voice);
-                requestBody.put("audioConfig", audioConfig);
+        Map<String, Object> audioConfig = new LinkedHashMap<>();
+        audioConfig.put("audioEncoding", "MP3");
+        audioConfig.put("speakingRate", speakingRate);
+        audioConfig.put("pitch", 0.0);
 
-                @SuppressWarnings("unchecked")
-                Map<String, Object> response = ttsWebClient.post()
-                                .uri("/v1/text:synthesize")
-                                .bodyValue(requestBody)
-                                .retrieve()
-                                .bodyToMono(Map.class)
-                                .block();
+        Map<String, Object> requestBody = new LinkedHashMap<>();
+        requestBody.put("input", input);
+        requestBody.put("voice", voice);
+        requestBody.put("audioConfig", audioConfig);
 
-                if (response == null || !response.containsKey("audioContent")) {
-                        throw new RuntimeException("Empty response from Google Cloud TTS");
-                }
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = ttsWebClient.post()
+                .uri("/v1/text:synthesize")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
 
-                String audioContentBase64 = (String) response.get("audioContent");
-                return Base64.getDecoder().decode(audioContentBase64);
+        if (response == null || !response.containsKey("audioContent")) {
+            throw new RuntimeException("Empty response from Google Cloud TTS");
         }
+
+        String audioContentBase64 = (String) response.get("audioContent");
+        return Base64.getDecoder().decode(audioContentBase64);
+    }
 }

@@ -5,5 +5,12 @@ public enum CustomConversationExpertise {
     BUSINESS,
     TECHNOLOGY,
     EDUCATION,
-    TRAVEL
+    TRAVEL,
+    RELATIONSHIPS,
+    ENTERTAINMENT,
+    GAMING,
+    FITNESS,
+    PSYCHOLOGY,
+    SOCIAL_MEDIA,
+    STREET_CULTURE
 }

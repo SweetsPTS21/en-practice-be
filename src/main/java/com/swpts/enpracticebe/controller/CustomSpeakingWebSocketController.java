@@ -49,6 +49,7 @@ public class CustomSpeakingWebSocketController {
                 request.setStyle(message.getStyle());
                 request.setPersonality(message.getPersonality());
                 request.setExpertise(message.getExpertise());
+                request.setVoiceName(message.getVoiceName());
                 request.setGradingEnabled(Boolean.TRUE.equals(message.getGradingEnabled()));
                 result = customConversationSpeakingService.startConversation(request, userId);
             } else if ("finish".equalsIgnoreCase(message.getAction())) {
@@ -76,7 +77,7 @@ public class CustomSpeakingWebSocketController {
 
             if (result.getAiMessage() != null && !result.getAiMessage().isBlank()) {
                 try {
-                    byte[] audioBytes = textToSpeechService.synthesize(result.getAiMessage(), null);
+                    byte[] audioBytes = textToSpeechService.synthesize(result.getAiMessage(), result.getVoiceName());
                     wsResponse.setAudioBase64(Base64.getEncoder().encodeToString(audioBytes));
                 } catch (Exception e) {
                     log.warn("TTS synthesis failed for custom conversation: {}", e.getMessage());

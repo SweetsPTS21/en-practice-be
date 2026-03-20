@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.entity;
+package com.swpts.enpracticebe.constant;
 
 public enum DictionarySourceType {
     MANUAL,

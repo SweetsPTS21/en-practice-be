@@ -1,12 +1,13 @@
 package com.swpts.enpracticebe.entity;
 
+import com.swpts.enpracticebe.constant.DictionarySourceType;
+import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
 import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UpdateTimestamp;
-import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
 
 import java.time.Instant;
 import java.util.ArrayList;

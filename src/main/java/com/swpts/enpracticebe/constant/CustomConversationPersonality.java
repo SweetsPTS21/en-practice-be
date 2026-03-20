@@ -4,5 +4,12 @@ public enum CustomConversationPersonality {
     FRIENDLY,
     HUMOROUS,
     PATIENT,
-    STRAIGHTFORWARD
+    STRAIGHTFORWARD,
+    CONFIDENT,
+    CURIOUS,
+    EMPATHETIC,
+    BOLD,
+    FLIRTY,
+    EDGY,
+    REBELLIOUS
 }

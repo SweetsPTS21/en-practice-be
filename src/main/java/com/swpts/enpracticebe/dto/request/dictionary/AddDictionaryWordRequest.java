@@ -1,7 +1,7 @@
 package com.swpts.enpracticebe.dto.request.dictionary;
 
+import com.swpts.enpracticebe.constant.DictionarySourceType;
 import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
-import com.swpts.enpracticebe.entity.DictionarySourceType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;

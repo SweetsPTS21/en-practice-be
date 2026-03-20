@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.swpts.enpracticebe.constant.CustomConversationExpertise;
 import com.swpts.enpracticebe.constant.CustomConversationPersonality;
 import com.swpts.enpracticebe.constant.CustomConversationStyle;
+import com.swpts.enpracticebe.constant.VoiceName;
 import lombok.Builder;
 import lombok.Data;
 
@@ -20,6 +21,7 @@ public class CustomConversationResponse {
     private CustomConversationStyle style;
     private CustomConversationPersonality personality;
     private CustomConversationExpertise expertise;
+    private VoiceName voiceName;
     private Boolean gradingEnabled;
     private String status;
     private Integer maxUserTurns;

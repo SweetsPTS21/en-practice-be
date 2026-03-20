@@ -1,13 +1,12 @@
 package com.swpts.enpracticebe.service.impl;
 
+import com.swpts.enpracticebe.constant.DictionarySourceType;
 import com.swpts.enpracticebe.dto.request.dictionary.AddDictionaryWordRequest;
 import com.swpts.enpracticebe.dto.request.dictionary.ReviewWordRequest;
 import com.swpts.enpracticebe.dto.request.dictionary.UpdateDictionaryWordRequest;
 import com.swpts.enpracticebe.dto.response.dictionary.DictionaryStatsResponse;
 import com.swpts.enpracticebe.dto.response.dictionary.DictionaryWordResponse;
 import com.swpts.enpracticebe.entity.UserDictionary;
-// Assuming we might need to change this if it's in a different package, let's grep for it first.
-// Temporarily using RuntimeException to resolve compile error until I find the correct exception class.
 import com.swpts.enpracticebe.repository.UserDictionaryRepository;
 import com.swpts.enpracticebe.service.DictionaryService;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +42,7 @@ public class DictionaryServiceImpl implements DictionaryService {
                 .note(request.getNote())
                 .examples(request.getExamples() != null ? request.getExamples() : new java.util.ArrayList<>())
                 .tags(request.getTags() != null ? request.getTags() : new java.util.ArrayList<>())
-                .sourceType(request.getSourceType() != null ? request.getSourceType() : com.swpts.enpracticebe.entity.DictionarySourceType.MANUAL)
+                .sourceType(request.getSourceType() != null ? request.getSourceType() : DictionarySourceType.MANUAL)
                 .isFavorite(request.getIsFavorite() != null ? request.getIsFavorite() : false)
                 .proficiencyLevel(0)
                 .reviewCount(0)
@@ -120,10 +119,10 @@ public class DictionaryServiceImpl implements DictionaryService {
     @Transactional
     public DictionaryWordResponse updateProficiency(UUID userId, UUID wordId, ReviewWordRequest request) {
         UserDictionary userDictionary = getDictionaryWord(userId, wordId);
-        
+
         int score = request.getPerformanceScore();
         int currentLevel = userDictionary.getProficiencyLevel() != null ? userDictionary.getProficiencyLevel() : 0;
-        
+
         // Simple SRS Logic
         if (score >= 3) {
             // Correct answer, increase level (max 5)
@@ -132,15 +131,15 @@ public class DictionaryServiceImpl implements DictionaryService {
             // Incorrect, reset or decrease level
             currentLevel = Math.max(0, currentLevel - 1);
         }
-        
+
         userDictionary.setProficiencyLevel(currentLevel);
         userDictionary.setLastReviewedAt(Instant.now());
         userDictionary.setReviewCount((userDictionary.getReviewCount() != null ? userDictionary.getReviewCount() : 0) + 1);
-        
+
         // Calculate next review time based on new level
         long hoursToNextReview = calculateNextReviewInterval(currentLevel);
         userDictionary.setNextReviewAt(Instant.now().plus(hoursToNextReview, ChronoUnit.HOURS));
-        
+
         return mapToResponse(dictionaryRepository.save(userDictionary));
     }
 
@@ -150,14 +149,14 @@ public class DictionaryServiceImpl implements DictionaryService {
         // We could write specific counts queries, but for simplicity we fetch stats via aggregation queries or count methods
         // To be precise and performant, we should add these to the repository.
         // For MVP, we will count by combining existing methods or writing new ones if needed.
-        
+
         // A better approach is adding specific counts to repo or doing a custom query. 
         // Let's implement this efficiently by defining custom counts or fetching all and grouping (not recommended for large sets).
         // Let's assume we add methods to UserDictionaryRepository for these counts, or do a single aggregation query.
-        
+
         // *Placeholder implementation* - Needs actual repo methods added for performance
         // For now, we will just return a mock or basic count to complete the structure. I will add the necessary repo methods next.
-        
+
         long total = dictionaryRepository.countByUserId(userId);
         long favorite = dictionaryRepository.countByUserIdAndIsFavoriteTrue(userId);
         long newWords = dictionaryRepository.countByUserIdAndProficiencyLevel(userId, 0);
@@ -185,23 +184,23 @@ public class DictionaryServiceImpl implements DictionaryService {
     }
 
     // --- Helper Methods ---
-    
+
     private long calculateNextReviewInterval(int level) {
-       return switch (level) {
-           case 0 -> 4; // 4 hours
-           case 1 -> 24; // 1 day
-           case 2 -> 72; // 3 days
-           case 3 -> 168; // 1 week
-           case 4 -> 336; // 2 weeks
-           case 5 -> 720; // 1 month
-           default -> 24;
-       };
+        return switch (level) {
+            case 0 -> 4; // 4 hours
+            case 1 -> 24; // 1 day
+            case 2 -> 72; // 3 days
+            case 3 -> 168; // 1 week
+            case 4 -> 336; // 2 weeks
+            case 5 -> 720; // 1 month
+            default -> 24;
+        };
     }
 
     private UserDictionary getDictionaryWord(UUID userId, UUID wordId) {
         UserDictionary word = dictionaryRepository.findById(wordId)
                 .orElseThrow(() -> new RuntimeException("Dictionary word not found")); // Will update CustomException later
-        
+
         if (!word.getUserId().equals(userId)) {
             throw new IllegalArgumentException("You do not have permission to access this word");
         }

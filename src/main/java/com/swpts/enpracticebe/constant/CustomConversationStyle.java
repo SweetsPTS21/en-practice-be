@@ -4,5 +4,11 @@ public enum CustomConversationStyle {
     CASUAL,
     PROFESSIONAL,
     ENCOURAGING,
-    CHALLENGING
+    CHALLENGING,
+    PLAYFUL,
+    FLIRTY,
+    DEEP,
+    DEBATE,
+    STREET,
+    UNFILTERED
 }

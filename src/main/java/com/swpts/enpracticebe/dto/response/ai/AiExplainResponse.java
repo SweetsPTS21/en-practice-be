@@ -1,7 +1,6 @@
 package com.swpts.enpracticebe.dto.response.ai;
 
 import com.swpts.enpracticebe.dto.response.dictionary.ExampleSentence;
-import com.swpts.enpracticebe.entity.DictionarySourceType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
