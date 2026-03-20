@@ -83,6 +83,19 @@ public class OpenClawServiceImpl implements OpenClawService {
         return request;
     }
 
+    private OpenClawRequest getFreestyleConversationRequest(String prompt, UUID userId, UUID conversationId) {
+        OpenClawRequest request = new OpenClawRequest();
+        request.setModel("openclaw");
+        request.setUser("en-practice-freestyle-conversation-" + userId + "-" + conversationId);
+
+        OpenClawRequest.Message msg = new OpenClawRequest.Message();
+        msg.setRole("user");
+        msg.setContent(prompt);
+
+        request.setMessages(List.of(msg));
+        return request;
+    }
+
     private String getOpenClawResponse(OpenClawRequest request) {
         OpenClawResponse response = webClient.post()
                 .uri(OPENCLAW_COMPLETION_URI)
@@ -145,6 +158,16 @@ public class OpenClawServiceImpl implements OpenClawService {
     @Override
     public AiAskResponse askAi(String prompt, UUID userId) {
         OpenClawRequest request = getOpenClawRequest(prompt, userId);
+        String response = getOpenClawResponse(request);
+
+        return AiAskResponse.builder()
+                .answer(response)
+                .build();
+    }
+
+    @Override
+    public AiAskResponse askFreestyleConversationAi(String prompt, UUID userId, UUID conversationId) {
+        OpenClawRequest request = getFreestyleConversationRequest(prompt, userId, conversationId);
         String response = getOpenClawResponse(request);
 
         return AiAskResponse.builder()

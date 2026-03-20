@@ -1,5 +1,7 @@
 package com.swpts.enpracticebe.service;
 
+import com.swpts.enpracticebe.constant.VoiceName;
+
 public interface TextToSpeechService {
 
     /**
@@ -10,7 +12,7 @@ public interface TextToSpeechService {
      *                  default
      * @return MP3 audio bytes
      */
-    byte[] synthesize(String text, String voiceName);
+    byte[] synthesize(String text, VoiceName voiceName);
 
     /**
      * Synthesize a single vocabulary word to speech audio bytes (MP3).

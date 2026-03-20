@@ -35,6 +35,16 @@ public interface OpenClawService {
     AiAskResponse askAi(String prompt, UUID userId);
 
     /**
+     * Ask AI using a dedicated freestyle conversation session.
+     *
+     * @param prompt prompt
+     * @param userId user id
+     * @param conversationId conversation id
+     * @return ai ask response
+     */
+    AiAskResponse askFreestyleConversationAi(String prompt, UUID userId, UUID conversationId);
+
+    /**
      * Stream AI response for realtime websocket chat.
      *
      * @param prompt prompt

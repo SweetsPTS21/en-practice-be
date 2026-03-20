@@ -1,6 +1,6 @@
 package com.swpts.enpracticebe.dto.response.dictionary;
 
-import com.swpts.enpracticebe.entity.DictionarySourceType;
+import com.swpts.enpracticebe.constant.DictionarySourceType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
