@@ -40,6 +40,8 @@ public interface VocabularyRecordRepository extends JpaRepository<VocabularyReco
 
     void deleteAllByUserId(UUID userId);
 
+    long countByUserId(UUID userId);
+
     // Stats: count total, correct, incorrect in a time range
     @Query("SELECT COUNT(v) FROM VocabularyRecord v WHERE v.userId = :userId AND v.testedAt >= :since")
     long countByUserIdAndTestedAtAfter(@Param("userId") UUID userId, @Param("since") Instant since);

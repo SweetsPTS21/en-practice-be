@@ -1,0 +1,37 @@
+CREATE TABLE IF NOT EXISTS user_profile_snapshots (
+    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    total_xp INTEGER NOT NULL DEFAULT 0,
+    current_level INTEGER NOT NULL DEFAULT 1,
+    current_level_min_xp INTEGER NOT NULL DEFAULT 0,
+    next_level INTEGER NOT NULL DEFAULT 2,
+    next_level_min_xp INTEGER NOT NULL DEFAULT 100,
+    xp_into_current_level INTEGER NOT NULL DEFAULT 0,
+    xp_needed_for_next_level INTEGER NOT NULL DEFAULT 100,
+    level_progress_percentage INTEGER NOT NULL DEFAULT 0,
+    weekly_xp INTEGER NOT NULL DEFAULT 0,
+    total_lessons_completed BIGINT NOT NULL DEFAULT 0,
+    total_words_learned BIGINT NOT NULL DEFAULT 0,
+    total_study_minutes INTEGER NOT NULL DEFAULT 0,
+    studied_minutes_today INTEGER NOT NULL DEFAULT 0,
+    words_to_review_today BIGINT NOT NULL DEFAULT 0,
+    favorite_words BIGINT NOT NULL DEFAULT 0,
+    new_words BIGINT NOT NULL DEFAULT 0,
+    learning_words BIGINT NOT NULL DEFAULT 0,
+    current_streak INTEGER NOT NULL DEFAULT 0,
+    longest_streak INTEGER NOT NULL DEFAULT 0,
+    active_days_last_30 INTEGER NOT NULL DEFAULT 0,
+    last_30_days_heatmap JSONB NOT NULL DEFAULT '[]'::jsonb,
+    listening_band REAL,
+    reading_band REAL,
+    speaking_band REAL,
+    writing_band REAL,
+    overall_band REAL,
+    vocab_total_words BIGINT NOT NULL DEFAULT 0,
+    vocab_mastered_words BIGINT NOT NULL DEFAULT 0,
+    vocab_reviewing_words BIGINT NOT NULL DEFAULT 0,
+    computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_profile_snapshots_computed_at
+    ON user_profile_snapshots(computed_at DESC);

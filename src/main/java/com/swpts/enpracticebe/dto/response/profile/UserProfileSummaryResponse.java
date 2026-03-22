@@ -1,4 +1,4 @@
-package com.swpts.enpracticebe.dto.response.auth;
+package com.swpts.enpracticebe.dto.response.profile;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,10 +11,14 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDto {
+public class UserProfileSummaryResponse {
     private UUID id;
     private String email;
     private String displayName;
     private String avatarUrl;
-    private String role;
+    private UserProfileGoalsResponse goals;
+    private LevelInfoResponse levelInfo;
+    private Float overallBand;
+    private Integer currentStreak;
+    private Integer weeklyXp;
 }

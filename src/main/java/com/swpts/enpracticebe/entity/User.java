@@ -31,6 +31,12 @@ public class User {
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String bio;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
