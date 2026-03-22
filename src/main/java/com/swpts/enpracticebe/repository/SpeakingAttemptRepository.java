@@ -24,6 +24,9 @@ public interface SpeakingAttemptRepository extends JpaRepository<SpeakingAttempt
     @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(a.timeSpentSeconds), 0) FROM SpeakingAttempt a WHERE a.userId = :userId AND a.submittedAt BETWEEN :start AND :end")
     Integer sumTimeSpentByUserIdAndDateRange(@org.springframework.data.repository.query.Param("userId") UUID userId, @org.springframework.data.repository.query.Param("start") Instant start, @org.springframework.data.repository.query.Param("end") Instant end);
 
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(a.timeSpentSeconds), 0) FROM SpeakingAttempt a WHERE a.userId = :userId")
+    Integer sumTimeSpentByUserId(@org.springframework.data.repository.query.Param("userId") UUID userId);
+
     boolean existsByUserIdAndSubmittedAtBetween(UUID userId, Instant start, Instant end);
 
     Optional<SpeakingAttempt> findFirstByUserIdAndStatusOrderByGradedAtDesc(UUID userId, SpeakingAttempt.AttemptStatus status);

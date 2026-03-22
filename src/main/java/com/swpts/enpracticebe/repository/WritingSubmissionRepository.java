@@ -26,6 +26,9 @@ public interface WritingSubmissionRepository extends JpaRepository<WritingSubmis
     @Query("SELECT COALESCE(SUM(a.timeSpentSeconds), 0) FROM WritingSubmission a WHERE a.userId = :userId AND a.submittedAt BETWEEN :start AND :end")
     Integer sumTimeSpentByUserIdAndDateRange(@Param("userId") UUID userId, @Param("start") Instant start, @Param("end") Instant end);
 
+    @Query("SELECT COALESCE(SUM(a.timeSpentSeconds), 0) FROM WritingSubmission a WHERE a.userId = :userId")
+    Integer sumTimeSpentByUserId(@Param("userId") UUID userId);
+
     boolean existsByUserIdAndSubmittedAtBetween(UUID userId, Instant start, Instant end);
 
     Optional<WritingSubmission> findFirstByUserIdAndStatusOrderByGradedAtDesc(UUID userId, WritingSubmission.SubmissionStatus status);
