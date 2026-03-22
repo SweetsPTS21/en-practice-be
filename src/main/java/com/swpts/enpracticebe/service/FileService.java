@@ -7,4 +7,6 @@ public interface FileService {
     PresignUrlResponse presignUrl(String key, String ts, String signature);
 
     String uploadAudio(MultipartFile file);
+
+    String uploadAvatar(MultipartFile file);
 }

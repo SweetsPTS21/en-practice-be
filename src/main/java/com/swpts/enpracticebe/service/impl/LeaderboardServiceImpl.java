@@ -54,7 +54,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
                     .rank(s.getRank())
                     .userId(user.getId())
                     .displayName(user.getDisplayName())
-                    .avatarUrl(null)
+                    .avatarUrl(user.getAvatarUrl())
                     .targetBand(null)
                     .xp(s.getXp())
                     .currentStreak(0)
